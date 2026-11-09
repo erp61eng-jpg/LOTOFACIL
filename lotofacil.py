@@ -18,7 +18,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # CONFIGURAÇÃO DE PÁGINA (PRIMEIRO COMANDO STREAMLIT OBRIGATÓRIO)
 # ==============================================================================
 st.set_page_config(
-    page_title="LOTOFÁCIL25 - Alto Contraste & Busca de Concurso",
+    page_title="LOTOFÁCIL25 - Alto Contraste & Placar Completo",
     page_icon="🍀",
     layout="wide"
 )
@@ -47,7 +47,7 @@ st.markdown('''
         border: 3px solid #000000 !important;
     }
     [data-testid="stMetricValue"] {
-        font-size: 2.5rem !important;
+        font-size: 2.2rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
@@ -448,7 +448,7 @@ def toggle_dezena(n):
 # ==============================================================================
 
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO • BUSCA DE CONCURSO ESPECÍFICO")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO • PLACAR COMPLETO (11 A 15 PONTOS)")
 
 tab_cartela, tab_config, tab_volante, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -724,7 +724,7 @@ with tab_volante:
         st.info("Gere apostas para inspecionar no volante.")
 
 # ------------------------------------------------------------------------------
-# ABA 4: UPLOAD & FILTRAGEM SUCESSIVA & CONFERÊNCIA
+# ABA 4: UPLOAD & FILTRAGEM SUCESSIVA & CONFERÊNCIA (PLACAR 11 A 15)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.subheader("📥 UPLOAD, FILTRAGEM & CONFERÊNCIA")
@@ -789,7 +789,6 @@ with tab_upload:
         with col_conf_right:
             st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS")
             
-            # Seletor com a opção de digitar o número do concurso específico
             modo_origem = st.radio("Origem do Sorteio:", ["Último Sorteio Oficial", "Digitar Concurso Específico", "Digitar Dezenas Manualmente"], horizontal=True)
             
             dezenas_conf = []
@@ -826,20 +825,23 @@ with tab_upload:
                 base_conferir = st.session_state.jogos_filtrados_upload or jogos_up
                 relatorio_conf, placar_conf = conferir_apostas_contra_sorteio(base_conferir, dezenas_conf)
 
-                c_s, c_q, c_qd = st.columns(3)
-                c_s.metric("15 Pontos", f"{len(placar_conf[15])}")
-                c_q.metric("14 Pontos", f"{len(placar_conf[14])}")
-                c_qd.metric("13 Pontos", f"{len(placar_conf[13])}")
+                # Placar completo 11 a 15 pontos em 5 colunas
+                c15, c14, c13, c12, c11 = st.columns(5)
+                c15.metric("15 P", f"{len(placar_conf[15])}")
+                c14.metric("14 P", f"{len(placar_conf[14])}")
+                c13.metric("13 P", f"{len(placar_conf[13])}")
+                c12.metric("12 P", f"{len(placar_conf[12])}")
+                c11.metric("11 P", f"{len(placar_conf[11])}")
 
-                tot_prem = len(placar_conf[15]) + len(placar_conf[14]) + len(placar_conf[13])
+                tot_prem = len(placar_conf[15]) + len(placar_conf[14]) + len(placar_conf[13]) + len(placar_conf[12]) + len(placar_conf[11])
                 if tot_prem > 0:
-                    st.markdown(f"<div class='progresso-gigante'>🎉 {tot_prem} APOSTA(S) PREMIADA(S) ENCONTRADAS!</div>", unsafe_allow_html=True)
-                    jogos_premiados_txt = "\n".join([f"{' '.join([f'{n:02d}' for n in it['jogo']])} | {it['qtd_acertos']} ACERTOS" for it in relatorio_conf if it["qtd_acertos"] >= 13])
-                    st.download_button("📥 BAIXAR APOSTAS PREMIADAS (.TXT)", data=jogos_premiados_txt, file_name="lotofacil_premiadas.txt", mime="text/plain", use_container_width=True)
+                    st.markdown(f"<div class='progresso-gigante'>🎉 {tot_prem} APOSTA(S) PREMIADA(S) (11 a 15 PONTOS)!</div>", unsafe_allow_html=True)
+                    jogos_premiados_txt = "\n".join([f"{' '.join([f'{n:02d}' for n in it['jogo']])} | {it['qtd_acertos']} ACERTOS" for it in relatorio_conf if it["qtd_acertos"] >= 11])
+                    st.download_button("📥 BAIXAR APOSTAS PREMIADAS (11+ PONTOS) (.TXT)", data=jogos_premiados_txt, file_name="lotofacil_premiadas_11_15.txt", mime="text/plain", use_container_width=True)
                 else:
-                    st.warning("Nenhuma aposta alcançou 13, 14 ou 15 acertos.")
+                    st.warning("Nenhuma aposta alcançou pontuação de 11 a 15 acertos.")
 
-                jogos_com_acerto = [it for it in relatorio_conf if it["qtd_acertos"] >= 13] or relatorio_conf
+                jogos_com_acerto = [it for it in relatorio_conf if it["qtd_acertos"] >= 11] or relatorio_conf
                 opcoes_map = {it["num_aposta"]: f"Aposta #{it['num_aposta']:04d} — {it['qtd_acertos']} acertos" for it in jogos_com_acerto[:50]}
                 if opcoes_map:
                     idx_escolhido = st.selectbox("Inspecionar no Volante:", list(opcoes_map.keys()), format_func=lambda x: opcoes_map[x])
