@@ -18,7 +18,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # CONFIGURAÇÃO DE PÁGINA (PRIMEIRO COMANDO STREAMLIT OBRIGATÓRIO)
 # ==============================================================================
 st.set_page_config(
-    page_title="LOTOFÁCIL25 - Alto Contraste & Bloco de Notas",
+    page_title="LOTOFÁCIL25 - Alto Contraste & Ciclo",
     page_icon="🍀",
     layout="wide"
 )
@@ -64,6 +64,7 @@ st.markdown('''
     }
 </style>
 ''', unsafe_allow_html=True)
+
 
 # ==============================================================================
 # 🛠️ ETAPA 1: CONSTANTES E PERSISTÊNCIA DO BLOCO DE NOTAS
@@ -123,18 +124,19 @@ for n in range(1, 26):
         "is_fib": n in FIBONACCI_LOTOFACIL
     }
 
+# Opções de 01 a 03 para linhas, colunas e diagonais (além de opções livres)
 OPCOES_QUANTIDADE = {
-    "Livre (0 a 15)": (0, 15), "0 (Nenhuma)": (0, 0), "Exatamente 1": (1, 1),
-    "Exatamente 2": (2, 2), "Exatamente 3": (3, 3), "Exatamente 4": (4, 4),
-    "Exatamente 5": (5, 5), "3 a 5": (3, 5), "2 a 4": (2, 4), "1 a 4": (1, 4)
+    "Livre (0 a 5)": (0, 5), "0 (Nenhuma)": (0, 0), "Exatamente 1 (01)": (1, 1),
+    "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "0 a 3": (0, 3),
+    "1 a 3": (1, 3), "2 a 3": (2, 3), "Exatamente 4": (4, 4), "Exatamente 5": (5, 5)
 }
 
 PRESETS_PADRAO = {
     "PADRAO_LOTOFACIL": {
-        "linhas": ["Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3"],
-        "colunas": ["Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3"],
-        "diag_cresc": ["Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3"],
-        "diag_decresc": ["Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3", "Exatamente 3"],
+        "linhas": ["Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)"],
+        "colunas": ["Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)"],
+        "diag_cresc": ["1 a 3", "1 a 3", "1 a 3", "1 a 3", "1 a 3"],
+        "diag_decresc": ["1 a 3", "1 a 3", "1 a 3", "1 a 3", "1 a 3"],
         "primos": [5], "pares": ["8P / 7I"], "moldura": [9], "soma": (170, 220)
     }
 }
@@ -203,17 +205,17 @@ def extrair_analise_elite(dados_calor):
 
 def mapear_quantidade_para_rotulo(qtd, modo="exato"):
     if modo == "exato":
-        mapa = {0: "0 (Nenhuma)", 1: "Exatamente 1", 2: "Exatamente 2", 3: "Exatamente 3", 4: "Exatamente 4", 5: "Exatamente 5"}
-        return mapa.get(qtd, "Livre (0 a 15)")
-    return "3 a 5" if 3 <= qtd <= 5 else "Livre (0 a 15)"
+        mapa = {0: "0 (Nenhuma)", 1: "Exatamente 1 (01)", 2: "Exatamente 2 (02)", 3: "Exatamente 3 (03)", 4: "Exatamente 4", 5: "Exatamente 5"}
+        return mapa.get(qtd, "Livre (0 a 5)")
+    return "1 a 3" if 1 <= qtd <= 3 else "Livre (0 a 5)"
 
 def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
     if flexivel:
         min_v = max(0, min_v - 1)
-        max_v = min(15, max_v + 1)
+        max_v = min(5, max_v + 1)
     for label, (low, high) in OPCOES_QUANTIDADE.items():
         if low == min_v and high == max_v: return label
-    return "Livre (0 a 15)"
+    return "Livre (0 a 5)"
 
 def extrair_filtros_de_jogo(dezenas, modo="exato", margem_soma=20):
     dezenas = sorted(list(set(dezenas)))
@@ -347,6 +349,31 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         })
     return relatorio, placar
 
+def calcular_ciclo_lotofacil(historico):
+    """Calcula o ciclo atual: dezenas sorteadas desde o último encerramento do ciclo de 25 dezenas."""
+    todas_25 = set(range(1, 26))
+    sorteios_invertidos = list(reversed(historico))
+    
+    sorteios_do_ciclo_atual = []
+    dezenas_vistas = set()
+    
+    for sorteio in sorteios_invertidos:
+        sorteios_do_ciclo_atual.append(sorteio)
+        dezenas_vistas.update(sorteio)
+        if len(dezenas_vistas) == 25:
+            # O ciclo fechou exatamente aqui
+            break
+            
+    # Se percorreu tudo e ainda faltam dezenas
+    faltam = sorted(list(todas_25 - dezenas_vistas))
+    ja_deram = sorted(list(dezenas_vistas))
+    return {
+        "concursos_no_ciclo": len(sorteios_do_ciclo_atual),
+        "ja_deram": ja_deram,
+        "faltam": faltam,
+        "ciclo_fechado": len(faltam) == 0
+    }
+
 def render_html_seguro(conteudo_html, altura=380):
     try:
         if hasattr(st, "html"): st.html(conteudo_html)
@@ -425,14 +452,14 @@ def toggle_dezena(n):
 # ==============================================================================
 
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO • COM BLOCO DE NOTAS AUTOMÁTICO")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO • CICLO ATUAL & FILTROS 01 A 03")
 
 tab_cartela, tab_config, tab_volante, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
     "🎛️ Filtros & Engenharia Reversa",
     "🗺️ Volante & Raio-X",
     "📥 Upload & Filtragem Sucessiva",
-    "📊 Histórico & API Caixa",
+    "📊 Histórico, Caixa & Ciclo",
     "📝 Bloco de Notas"
 ])
 
@@ -522,7 +549,7 @@ with tab_cartela:
         st.markdown(f"<div style='font-size:1.6rem;font-weight:900;margin-top:10px;'>Jogos Brutos: {math.comb(qtd_sel, 15) if qtd_sel >= 15 else 0:,}</div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
+# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (01 A 03)
 # ------------------------------------------------------------------------------
 with tab_config:
     st.markdown("### 🎛️ FILTROS ESTRUTURAIS & ENGENHARIA REVERSA")
@@ -576,6 +603,7 @@ with tab_config:
                     st.success(f"Filtro '{nome_salvar}' ativado e salvo permanentemente!")
                     st.rerun()
 
+    # GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL
     with st.container(border=True):
         st.markdown("#### 💾 GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL")
         col_puxar, col_gravar = st.columns(2)
@@ -597,10 +625,10 @@ with tab_config:
                 if not nome_novo_filtro.strip(): st.error("Informe um nome para a predefinição.")
                 else:
                     novo_preset = {
-                        "linhas": [st.session_state.get(f"sel_l_{r}", "3 a 5") for r in range(5)],
-                        "colunas": [st.session_state.get(f"sel_c_{c}", "3 a 5") for c in range(5)],
-                        "diag_cresc": [st.session_state.get(f"sel_dc_{d}", "3 a 5") for d in range(5)],
-                        "diag_decresc": [st.session_state.get(f"sel_dd_{d}", "3 a 5") for d in range(5)],
+                        "linhas": [st.session_state.get(f"sel_l_{r}", "Exatamente 3 (03)") for r in range(5)],
+                        "colunas": [st.session_state.get(f"sel_c_{c}", "Exatamente 3 (03)") for c in range(5)],
+                        "diag_cresc": [st.session_state.get(f"sel_dc_{d}", "1 a 3") for d in range(5)],
+                        "diag_decresc": [st.session_state.get(f"sel_dd_{d}", "1 a 3") for d in range(5)],
                         "primos": st.session_state.get("sel_primos", [5]),
                         "pares": st.session_state.get("sel_pares", ["8P / 7I"]),
                         "moldura": st.session_state.get("sel_moldura", [9]),
@@ -615,7 +643,7 @@ with tab_config:
     opcoes_nomes = list(OPCOES_QUANTIDADE.keys())
 
     with st.container(border=True):
-        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05)")
+        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05 — De 01 a 03)")
         cols_l = st.columns(5)
         limites_linhas = []
         for r in range(5):
@@ -624,7 +652,7 @@ with tab_config:
                 limites_linhas.append(OPCOES_QUANTIDADE[esc])
 
     with st.container(border=True):
-        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05)")
+        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05 — De 01 a 03)")
         cols_c = st.columns(5)
         limites_colunas = []
         for c in range(5):
@@ -635,7 +663,7 @@ with tab_config:
     c_diag1, c_diag2 = st.columns(2)
     with c_diag1:
         with st.container(border=True):
-            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05 /)")
+            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05 / — De 01 a 03)")
             with st.expander("Expandir Diagonais Crescentes", expanded=False):
                 limites_dc = []
                 for d in range(5):
@@ -643,7 +671,7 @@ with tab_config:
                     limites_dc.append(OPCOES_QUANTIDADE[esc])
     with c_diag2:
         with st.container(border=True):
-            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05 \\)")
+            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05 \\ — De 01 a 03)")
             with st.expander("Expandir Diagonais Decrescentes", expanded=False):
                 limites_dd = []
                 for d in range(5):
@@ -732,7 +760,7 @@ with tab_upload:
                 qtd_flt = len(st.session_state.jogos_filtrados_upload)
                 txt_flt = "\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_filtrados_upload])
                 with c_flt2:
-                    st.download_button(f"💾 BAIXAR LOTE FILTRADO ({qtd_flt:,})", data=txt_flt, file_name=f"lotofacil_lote_filtrado.txt", mime="text/plain", use_container_width=True)
+                    st.download_button(f"💾 BAIXAR LOTE FILTRADO ({qtd_flt:,})", data=txt_flt, file_name="lotofacil_lote_filtrado.txt", mime="text/plain", use_container_width=True)
 
         st.divider()
         
@@ -804,30 +832,58 @@ with tab_upload:
         st.info("Carregue um arquivo .txt ou .csv na parte superior para ativar o painel de conferência.")
 
 # ------------------------------------------------------------------------------
-# ABA 5: HISTÓRICO & API CAIXA
+# ABA 5: HISTÓRICO, CAIXA & CICLO DA LOTOFÁCIL
 # ------------------------------------------------------------------------------
 with tab_historico:
-    st.subheader("BASE DE CONCURSOS OFICIAIS")
-    if st.button("🌐 SINCRONIZAR COM A CAIXA AGORA", type="primary"):
-        r = requests.get("https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil", timeout=10, verify=False)
-        if r.status_code == 200:
-            ult = r.json()
-            dezenas_sorteadas = sorted([int(x) for x in ult.get("listaDezenas", [])])
-            if len(dezenas_sorteadas) == 15 and dezenas_sorteadas not in st.session_state.historico:
-                st.session_state.historico.append(dezenas_sorteadas)
-                st.success(f"Concurso #{ult.get('numero')} sincronizado!")
-                st.rerun()
+    st.subheader("📊 HISTÓRICO DE CONCURSOS & ANÁLISE DE CICLO")
+    
+    col_sync1, col_sync2 = st.columns([1, 2])
+    with col_sync1:
+        if st.button("🌐 SINCRONIZAR COM A CAIXA AGORA", type="primary", use_container_width=True):
+            r = requests.get("https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil", timeout=10, verify=False)
+            if r.status_code == 200:
+                ult = r.json()
+                dezenas_sorteadas = sorted([int(x) for x in ult.get("listaDezenas", [])])
+                if len(dezenas_sorteadas) == 15 and dezenas_sorteadas not in st.session_state.historico:
+                    st.session_state.historico.append(dezenas_sorteadas)
+                    st.success(f"Concurso #{ult.get('numero')} sincronizado!")
+                    st.rerun()
+
+    st.divider()
+
+    # Cálculo do Ciclo Atual
+    ciclo_dados = calcular_ciclo_lotofacil(st.session_state.historico)
+    
+    st.markdown("### 🔄 ANÁLISE DO CICLO ATUAL DA LOTOFÁCIL")
+    st.markdown(f"**Concursos analisados neste ciclo:** `{ciclo_dados['concursos_no_ciclo']}` concurso(s)")
+    
+    col_c1, col_c2 = st.columns(2)
+    
+    with col_c1:
+        st.markdown("#### ✅ Dezenas que já saíram no ciclo:")
+        ja_deram_str = " • ".join([f"{n:02d}" for n in ciclo_dados['ja_deram']]) if ciclo_dados['ja_deram'] else "Nenhuma"
+        st.markdown(f"<div style='background:#facc15;color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.2rem;font-weight:900;'>{ja_deram_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"**Total já sorteadas:** `{len(ciclo_dados['ja_deram'])} / 25`")
+
+    with col_c2:
+        st.markdown("#### ⏳ Dezenas que FALTAM (Ausentes no ciclo):")
+        faltam_str = " • ".join([f"{n:02d}" for n in ciclo_dados['faltam']]) if ciclo_dados['faltam'] else "🎉 CICLO FECHADO!"
+        bg_faltam = "#fef08a" if ciclo_dados['faltam'] else "#38bdf8"
+        st.markdown(f"<div style='background:{bg_faltam};color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.3rem;font-weight:900;'>{faltam_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"**Total que faltam:** `{len(ciclo_dados['faltam'])} dezenas`")
+
+    if not ciclo_dados['faltam']:
+        st.success("🌟 O ciclo atual completou todas as 25 dezenas e foi encerrado! Um novo ciclo iniciou-se.")
 
 # ------------------------------------------------------------------------------
 # ABA 6: BLOCO DE NOTAS (COM GRAVAÇÃO AUTOMÁTICA)
 # ------------------------------------------------------------------------------
 with tab_notas:
     st.subheader("📝 BLOCO DE NOTAS AUTOMÁTICO")
-    st.markdown("Use este espaço para apuntar palpites, estratégias ou matrizes. **O conteúdo é gravado instantaneamente no disco.**")
+    st.markdown("Use este espaço para apontar palpites, estratégias ou matrizes. **O conteúdo é gravado instantaneamente no disco.**")
     
     conteudo_atual = carregar_notas_salvas()
     
-    # Caixa de texto que atualiza e grava automaticamente
     novas_notas = st.text_area(
         "Escreva as suas anotações aqui:",
         value=conteudo_atual,
@@ -835,7 +891,6 @@ with tab_notas:
         key="bloco_notas_input"
     )
     
-    # Sempre que houver alteração, guarda no ficheiro local
     if novas_notas != conteudo_atual:
         salvar_notas_automaticamente(novas_notas)
     
