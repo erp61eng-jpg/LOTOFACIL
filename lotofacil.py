@@ -100,6 +100,9 @@ MOLDURA_SET = (
     {r * 5 + 5 for r in range(5)}
 )
 
+# Cruz Central da Matriz 5x5 (Linha do meio e Coluna do meio)
+CRUZ_CENTRAL_SET = {3, 8, 11, 12, 13, 14, 15, 18, 23}
+
 DEZENAS_BASE_LOTOFACIL = {1, 3, 5, 12, 13, 14, 23, 25}
 
 FALLBACK_LOTOFACIL = [
@@ -111,6 +114,8 @@ FALLBACK_LOTOFACIL = [
 PAR_LOOKUP = [False] + [(n % 2 == 0) for n in range(1, 26)]
 PRIMO_LOOKUP = [False] + [(n in PRIMOS_LOTOFACIL) for n in range(1, 26)]
 MOLDURA_LOOKUP = [False] + [(n in MOLDURA_SET) for n in range(1, 26)]
+CRUZ_LOOKUP = [False] + [(n in CRUZ_CENTRAL_SET) for n in range(1, 26)]
+
 ROW_LOOKUP = [0] + [(n - 1) // 5 for n in range(1, 26)]
 COL_LOOKUP = [0] + [(n - 1) % 5 for n in range(1, 26)]
 DC_LOOKUP = [0] + [(((n - 1) % 5) + ((n - 1) // 5)) % 5 for n in range(1, 26)]
@@ -121,7 +126,7 @@ for n in range(1, 26):
     PROPS[n] = {
         "r": ROW_LOOKUP[n], "c": COL_LOOKUP[n], "dc": DC_LOOKUP[n], "dd": DD_LOOKUP[n],
         "is_primo": PRIMO_LOOKUP[n], "is_par": PAR_LOOKUP[n], "is_moldura": MOLDURA_LOOKUP[n],
-        "is_fib": n in FIBONACCI_LOTOFACIL
+        "is_cruz": CRUZ_LOOKUP[n], "is_fib": n in FIBONACCI_LOTOFACIL
     }
 
 OPCOES_QUANTIDADE = {
@@ -136,7 +141,7 @@ PRESETS_PADRAO = {
         "colunas": ["Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)", "Exatamente 3 (03)"],
         "diag_cresc": ["1 a 3", "1 a 3", "1 a 3", "1 a 3", "1 a 3"],
         "diag_decresc": ["1 a 3", "1 a 3", "1 a 3", "1 a 3", "1 a 3"],
-        "primos": [5], "pares": ["8P / 7I"], "moldura": [9], "soma": (170, 220)
+        "primos": [5], "pares": ["8P / 7I"], "moldura": [9], "cruz": [4, 5, 6], "soma": (170, 220)
     }
 }
 
@@ -180,7 +185,7 @@ def calcular_metricas_elliott(historico):
         score_fib = 3.0 if PROPS[n]["is_fib"] else 0.0
         penalidade = -3.0 if atr > 10 else 0.0
         score_total = max(0.0, score_retracao + score_impulso + score_fib + penalidade)
-        dados[n] = {"numero": n, "score": round(score_total, 1), "atraso": atr, "is_fib": PROPS[n]["is_fib"], "is_primo": PROPS[n]["is_primo"], "is_par": PROPS[n]["is_par"], "dc": PROPS[n]["dc"], "dd": PROPS[n]["dd"], "col": PROPS[n]["c"]}
+        dados[n] = {"numero": n, "score": round(score_total, 1), "atraso": atr, "is_fib": PROPS[n]["is_fib"], "is_primo": PROPS[n]["is_primo"], "is_par": PROPS[n]["is_par"], "is_cruz": PROPS[n]["is_cruz"], "dc": PROPS[n]["dc"], "dd": PROPS[n]["dd"], "col": PROPS[n]["c"]}
     return dados
 
 def extrair_analise_elite(dados_calor):
@@ -229,6 +234,7 @@ def extrair_filtros_de_jogo(dezenas, modo="exato", margem_soma=20):
     pares_total = sum(1 for n in dezenas if PAR_LOOKUP[n])
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
+    cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
     soma_total = sum(dezenas)
     return {
         "linhas": [mapear_quantidade_para_rotulo(q, "exato") for q in l_cnt],
@@ -236,7 +242,7 @@ def extrair_filtros_de_jogo(dezenas, modo="exato", margem_soma=20):
         "diag_cresc": [mapear_quantidade_para_rotulo(q, "exato") for q in dc_cnt],
         "diag_decresc": [mapear_quantidade_para_rotulo(q, "exato") for q in dd_cnt],
         "primos": [primos_total], "pares": [f"{pares_total}P / {15 - pares_total}I"],
-        "moldura": [moldura_total], "soma": (max(100, soma_total - margem_soma), min(300, soma_total + margem_soma))
+        "moldura": [moldura_total], "cruz": [cruz_total], "soma": (max(100, soma_total - margem_soma), min(300, soma_total + margem_soma))
     }
 
 def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
@@ -246,7 +252,7 @@ def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
     min_c, max_c = [99] * 5, [-1] * 5
     min_dc, max_dc = [99] * 5, [-1] * 5
     min_dd, max_dd = [99] * 5, [-1] * 5
-    conjunto_primos, conjunto_pares, conjunto_moldura, somas_obs = set(), set(), set(), []
+    conjunto_primos, conjunto_pares, conjunto_moldura, conjunto_cruz, somas_obs = set(), set(), set(), set(), []
     for sorteio in lista_sorteios:
         dezenas = sorted(sorteio)
         l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
@@ -266,6 +272,7 @@ def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
         pa = sum(1 for n in dezenas if PAR_LOOKUP[n])
         conjunto_pares.add(f"{pa}P / {15 - pa}I")
         conjunto_moldura.add(sum(1 for n in dezenas if MOLDURA_LOOKUP[n]))
+        conjunto_cruz.add(sum(1 for n in dezenas if CRUZ_LOOKUP[n]))
         somas_obs.append(sum(dezenas))
     return {
         "linhas": [mapear_intervalo_para_opcao(min_l[r], max_l[r], is_flex) for r in range(5)],
@@ -273,7 +280,8 @@ def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
         "diag_cresc": [mapear_intervalo_para_opcao(min_dc[d], max_dc[d], is_flex) for d in range(5)],
         "diag_decresc": [mapear_intervalo_para_opcao(min_dd[d], max_dd[d], is_flex) for d in range(5)],
         "primos": sorted(list(conjunto_primos)), "pares": sorted(list(conjunto_pares)),
-        "moldura": sorted(list(conjunto_moldura)), "soma": (max(100, min(somas_obs)-15), min(300, max(somas_obs)+15))
+        "moldura": sorted(list(conjunto_moldura)), "cruz": sorted(list(conjunto_cruz)),
+        "soma": (max(100, min(somas_obs)-15), min(300, max(somas_obs)+15))
     }
 
 def validar_aposta_final_15(jogo, cfg):
@@ -282,6 +290,9 @@ def validar_aposta_final_15(jogo, cfg):
     if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg["pares_aceitos"]: return False
     if sum(1 for n in jogo if PRIMO_LOOKUP[n]) not in cfg["primos_aceitos"]: return False
     if sum(1 for n in jogo if MOLDURA_LOOKUP[n]) not in cfg["moldura_aceita"]: return False
+    if "cruz_aceita" in cfg and cfg["cruz_aceita"]:
+        if sum(1 for n in jogo if CRUZ_LOOKUP[n]) not in cfg["cruz_aceita"]: return False
+
     l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
     for n in jogo:
         l_cnt[ROW_LOOKUP[n]] += 1
@@ -429,6 +440,7 @@ def aplicar_preset(nome_preset):
     st.session_state["sel_primos"] = cfg_p["primos"]
     st.session_state["sel_pares"] = cfg_p["pares"]
     st.session_state["sel_moldura"] = cfg_p["moldura"]
+    st.session_state["sel_cruz"] = cfg_p.get("cruz", [4, 5, 6])
     soma_raw = cfg_p.get("soma", (170, 220))
     st.session_state["sel_soma"] = (int(soma_raw[0]), int(soma_raw[1]))
 
@@ -628,6 +640,7 @@ with tab_config:
                         "primos": st.session_state.get("sel_primos", [5]),
                         "pares": st.session_state.get("sel_pares", ["8P / 7I"]),
                         "moldura": st.session_state.get("sel_moldura", [9]),
+                        "cruz": st.session_state.get("sel_cruz", [4, 5, 6]),
                         "soma": (int(st.session_state.get("sel_soma", (170, 220))[0]), int(st.session_state.get("sel_soma", (170, 220))[1]))
                     }
                     st.session_state.presets_filtros[nome_novo_filtro.strip()] = novo_preset
@@ -675,15 +688,16 @@ with tab_config:
                     limites_dd.append(OPCOES_QUANTIDADE[esc])
 
     with st.container(border=True):
-        st.markdown("#### 5️⃣ PRIMOS, PARES, MOLDURA E FAIXA DE SOMA")
-        c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+        st.markdown("#### 5️⃣ PRIMOS, PARES, MOLDURA, CRUZ CENTRAL E FAIXA DE SOMA")
+        c_p1, c_p2, c_p3, c_p4, c_p5 = st.columns(5)
         with c_p1: primos_sel = st.multiselect("Primos:", list(range(10)), default=st.session_state.get("sel_primos", [5]), key="sel_primos")
         with c_p2:
             opcoes_par = {"8P / 7I": 8, "7P / 8I": 7, "9P / 6I": 9, "6P / 9I": 6, "10P / 5I": 10, "5P / 10I": 5}
             par_sel = st.multiselect("Pares/Ímpares:", list(opcoes_par.keys()), default=st.session_state.get("sel_pares", ["8P / 7I"]), key="sel_pares")
             pares_valores = {opcoes_par[k] for k in par_sel}
         with c_p3: moldura_sel = st.multiselect("Moldura:", list(range(16)), default=st.session_state.get("sel_moldura", [9]), key="sel_moldura")
-        with c_p4:
+        with c_p4: cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [4, 5, 6]), key="sel_cruz")
+        with c_p5:
             val_soma_estado = st.session_state.get("sel_soma", (170, 220))
             soma_min_val, soma_max_val = (int(val_soma_estado[0]), int(val_soma_estado[1])) if isinstance(val_soma_estado, (list, tuple)) and len(val_soma_estado) == 2 else (170, 220)
             faixa_soma = st.slider("Faixa de Soma:", 100, 300, (soma_min_val, soma_max_val), key="sel_soma")
@@ -691,7 +705,7 @@ with tab_config:
     config_total = {
         "linhas": limites_linhas, "colunas": limites_colunas, "diag_cresc": limites_dc,
         "diag_decresc": limites_dd, "primos_aceitos": set(primos_sel), "pares_aceitos": pares_valores,
-        "moldura_aceita": set(moldura_sel), "faixa_soma": faixa_soma
+        "moldura_aceita": set(moldura_sel), "cruz_aceita": set(cruz_sel), "faixa_soma": faixa_soma
     }
 
     st.divider()
@@ -825,7 +839,6 @@ with tab_upload:
                 base_conferir = st.session_state.jogos_filtrados_upload or jogos_up
                 relatorio_conf, placar_conf = conferir_apostas_contra_sorteio(base_conferir, dezenas_conf)
 
-                # Placar completo 11 a 15 pontos em 5 colunas
                 c15, c14, c13, c12, c11 = st.columns(5)
                 c15.metric("15 P", f"{len(placar_conf[15])}")
                 c14.metric("14 P", f"{len(placar_conf[14])}")
