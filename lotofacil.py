@@ -132,7 +132,7 @@ for n in range(1, 26):
 OPCOES_QUANTIDADE = {
     "Livre (0 a 5)": (0, 5), "0 (Nenhuma)": (0, 0), "Exatamente 1 (01)": (1, 1),
     "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "0 a 3": (0, 3),
-    "1 a 3": (1, 3), "2 a 3": (2, 3), "Exatamente 4": (4, 4), "Exatamente 5": (5, 5)
+    "0 a 4": (0, 4), "1 a 3": (1, 3), "2 a 3": (2, 3), "Exatamente 4": (4, 4), "Exatamente 5": (5, 5)
 }
 
 PRESETS_PADRAO = {
@@ -652,7 +652,7 @@ with tab_config:
     opcoes_nomes = list(OPCOES_QUANTIDADE.keys())
 
     with st.container(border=True):
-        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05 — De 01 a 03)")
+        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05 — De 0 a 5)")
         cols_l = st.columns(5)
         limites_linhas = []
         for r in range(5):
@@ -661,7 +661,7 @@ with tab_config:
                 limites_linhas.append(OPCOES_QUANTIDADE[esc])
 
     with st.container(border=True):
-        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05 — De 01 a 03)")
+        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05 — De 0 a 5)")
         cols_c = st.columns(5)
         limites_colunas = []
         for c in range(5):
@@ -672,7 +672,7 @@ with tab_config:
     c_diag1, c_diag2 = st.columns(2)
     with c_diag1:
         with st.container(border=True):
-            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05 / — De 01 a 03)")
+            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05 / — De 0 a 5)")
             with st.expander("Expandir Diagonais Crescentes", expanded=False):
                 limites_dc = []
                 for d in range(5):
@@ -680,7 +680,7 @@ with tab_config:
                     limites_dc.append(OPCOES_QUANTIDADE[esc])
     with c_diag2:
         with st.container(border=True):
-            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05 \\ — De 01 a 03)")
+            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05 \\ — De 0 a 5)")
             with st.expander("Expandir Diagonais Decrescentes", expanded=False):
                 limites_dd = []
                 for d in range(5):
