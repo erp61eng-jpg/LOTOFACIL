@@ -18,7 +18,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # CONFIGURAÇÃO DE PÁGINA (PRIMEIRO COMANDO STREAMLIT OBRIGATÓRIO)
 # ==============================================================================
 st.set_page_config(
-    page_title="LOTOFÁCIL25 - Alto Contraste & Ciclo",
+    page_title="LOTOFÁCIL25 - Alto Contraste & Busca de Concurso",
     page_icon="🍀",
     layout="wide"
 )
@@ -124,7 +124,6 @@ for n in range(1, 26):
         "is_fib": n in FIBONACCI_LOTOFACIL
     }
 
-# Opções de 01 a 03 para linhas, colunas e diagonais (além de opções livres)
 OPCOES_QUANTIDADE = {
     "Livre (0 a 5)": (0, 5), "0 (Nenhuma)": (0, 0), "Exatamente 1 (01)": (1, 1),
     "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "0 a 3": (0, 3),
@@ -350,7 +349,6 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
     return relatorio, placar
 
 def calcular_ciclo_lotofacil(historico):
-    """Calcula o ciclo atual: dezenas sorteadas desde o último encerramento do ciclo de 25 dezenas."""
     todas_25 = set(range(1, 26))
     sorteios_invertidos = list(reversed(historico))
     
@@ -361,10 +359,8 @@ def calcular_ciclo_lotofacil(historico):
         sorteios_do_ciclo_atual.append(sorteio)
         dezenas_vistas.update(sorteio)
         if len(dezenas_vistas) == 25:
-            # O ciclo fechou exatamente aqui
             break
             
-    # Se percorreu tudo e ainda faltam dezenas
     faltam = sorted(list(todas_25 - dezenas_vistas))
     ja_deram = sorted(list(dezenas_vistas))
     return {
@@ -452,7 +448,7 @@ def toggle_dezena(n):
 # ==============================================================================
 
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO • CICLO ATUAL & FILTROS 01 A 03")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO • BUSCA DE CONCURSO ESPECÍFICO")
 
 tab_cartela, tab_config, tab_volante, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -792,17 +788,39 @@ with tab_upload:
 
         with col_conf_right:
             st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS")
-            ult_sorteio = st.session_state.historico[-1] if st.session_state.historico else [1, 2, 4, 7, 10, 11, 13, 14, 15, 17, 19, 20, 22, 23, 25]
-            modo_origem = st.radio("Origem:", ["Último Sorteio Oficial", "Digitar Manualmente"], horizontal=True)
+            
+            # Seletor com a opção de digitar o número do concurso específico
+            modo_origem = st.radio("Origem do Sorteio:", ["Último Sorteio Oficial", "Digitar Concurso Específico", "Digitar Dezenas Manualmente"], horizontal=True)
+            
+            dezenas_conf = []
+            
             if modo_origem == "Último Sorteio Oficial":
-                dezenas_conf = sorted(ult_sorteio)
+                dezenas_conf = sorted(st.session_state.historico[-1]) if st.session_state.historico else []
+            elif modo_origem == "Digitar Concurso Específico":
+                num_conc_busca = st.number_input("Digite o número do Concurso:", min_value=1, value=3000, step=1)
+                if st.button("🔍 Buscar Concurso na Caixa", use_container_width=True):
+                    with st.spinner(f"A consultar o concurso {num_conc_busca}..."):
+                        r_esp = requests.get(f"https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/{num_conc_busca}", timeout=10, verify=False)
+                        if r_esp.status_code == 200:
+                            dados_esp = r_esp.json()
+                            dezenas_esp = sorted([int(x) for x in dados_esp.get("listaDezenas", [])])
+                            if len(dezenas_esp) == 15:
+                                st.session_state["concurso_buscado_temp"] = dezenas_esp
+                                st.success(f"Concurso #{num_conc_busca} carregado com sucesso!")
+                            else:
+                                st.error("Erro ao ler as dezenas do concurso.")
+                        else:
+                            st.error("Concurso não encontrado ou erro na API da Caixa.")
+                
+                dezenas_conf = st.session_state.get("concurso_buscado_temp", [])
             else:
-                entrada_manual = st.text_input("15 Dezenas Sorteadas:", value=" ".join([f"{n:02d}" for n in sorted(ult_sorteio)]))
+                ult_def = st.session_state.historico[-1] if st.session_state.historico else [1, 2, 4, 7, 10, 11, 13, 14, 15, 17, 19, 20, 22, 23, 25]
+                entrada_manual = st.text_input("15 Dezenas Sorteadas (espaços):", value=" ".join([f"{n:02d}" for n in sorted(ult_def)]))
                 nums_man = [int(x) for x in re.findall(r"\b\d+\b", entrada_manual)]
                 dezenas_conf = sorted(list(set([n for n in nums_man if 1 <= n <= 25])))
 
             if len(dezenas_conf) != 15:
-                st.error("Informe exatamente 15 dezenas distintas entre 01 e 25.")
+                st.warning("⚠️ Selecione ou busque um concurso válido com 15 dezenas para iniciar a conferência.")
             else:
                 render_cartao_sorteio_html(dezenas_conf, titulo="SORTEIO CONFERIDO")
                 base_conferir = st.session_state.jogos_filtrados_upload or jogos_up
@@ -832,7 +850,7 @@ with tab_upload:
         st.info("Carregue um arquivo .txt ou .csv na parte superior para ativar o painel de conferência.")
 
 # ------------------------------------------------------------------------------
-# ABA 5: HISTÓRICO, CAIXA & CICLO DA LOTOFÁCIL
+# ABA 5: HISTÓRICO, CAIXA & CICLO
 # ------------------------------------------------------------------------------
 with tab_historico:
     st.subheader("📊 HISTÓRICO DE CONCURSOS & ANÁLISE DE CICLO")
@@ -851,7 +869,6 @@ with tab_historico:
 
     st.divider()
 
-    # Cálculo do Ciclo Atual
     ciclo_dados = calcular_ciclo_lotofacil(st.session_state.historico)
     
     st.markdown("### 🔄 ANÁLISE DO CICLO ATUAL DA LOTOFÁCIL")
@@ -876,7 +893,7 @@ with tab_historico:
         st.success("🌟 O ciclo atual completou todas as 25 dezenas e foi encerrado! Um novo ciclo iniciou-se.")
 
 # ------------------------------------------------------------------------------
-# ABA 6: BLOCO DE NOTAS (COM GRAVAÇÃO AUTOMÁTICA)
+# ABA 6: BLOCO DE NOTAS
 # ------------------------------------------------------------------------------
 with tab_notas:
     st.subheader("📝 BLOCO DE NOTAS AUTOMÁTICO")
