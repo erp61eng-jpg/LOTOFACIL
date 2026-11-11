@@ -8,17 +8,15 @@ import time
 import re
 import json
 import os
-import io
-import traceback
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==============================================================================
-# CONFIGURAÇÃO DE PÁGINA (PRIMEIRO COMANDO STREAMLIT OBRIGATÓRIO)
+# CONFIGURAÇÃO DE PÁGINA (STREAMLIT)
 # ==============================================================================
 st.set_page_config(
-    page_title="LOTOFÁCIL25 - Alto Contraste & Placar Completo",
+    page_title="LOTOFÁCIL25 - Alto Contraste & Filtro Inteligente",
     page_icon="🍀",
     layout="wide"
 )
@@ -35,7 +33,7 @@ st.markdown('''
     h1, h2, h3, h4 { color: #000000 !important; font-weight: 900 !important; }
     .stButton > button {
         color: #000000 !important;
-        font-size: 1.3rem !important;
+        font-size: 1.35rem !important;
         font-weight: 900 !important;
         border: 3px solid #000000 !important;
         background-color: #ffffff !important;
@@ -56,7 +54,7 @@ st.markdown('''
         font-weight: 900 !important;
         color: #000000 !important;
         background-color: #fef08a !important;
-        padding: 10px;
+        padding: 12px;
         border: 3px solid #000000;
         border-radius: 8px;
         text-align: center;
@@ -67,7 +65,7 @@ st.markdown('''
 
 
 # ==============================================================================
-# 🛠️ ETAPA 1: CONSTANTES E PERSISTÊNCIA DO BLOCO DE NOTAS
+# 🛠️ ETAPA 1: CONSTANTES E BANCO DE DADOS LOCAL
 # ==============================================================================
 
 ARQUIVO_NOTAS_LOCAL = "meu_bloco_de_notas.txt"
@@ -134,8 +132,9 @@ for n in range(1, 26):
 
 OPCOES_QUANTIDADE = {
     "Livre (0 a 5)": (0, 5), "0 (Nenhuma)": (0, 0), "Exatamente 1 (01)": (1, 1),
-    "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "0 a 3": (0, 3),
-    "0 a 4": (0, 4), "1 a 3": (1, 3), "2 a 3": (2, 3), "Exatamente 4": (4, 4), "Exatamente 5": (5, 5)
+    "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "0 a 2": (0, 2),
+    "0 a 3": (0, 3), "0 a 4": (0, 4), "1 a 3": (1, 3), "2 a 3": (2, 3),
+    "Exatamente 4": (4, 4), "Exatamente 5": (5, 5)
 }
 
 PRESETS_PADRAO = {
@@ -218,11 +217,31 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-def mapear_quantidade_para_rotulo(qtd, modo="exato"):
+# ==============================================================================
+# FUNÇÃO REFORMULADA: MAPEAMENTO ELÁSTICO (NÃO ENGESSA O RESULTADO)
+# ==============================================================================
+def mapear_quantidade_para_rotulo(qtd, modo="elastico"):
     if modo == "exato":
-        mapa = {0: "0 (Nenhuma)", 1: "Exatamente 1 (01)", 2: "Exatamente 2 (02)", 3: "Exatamente 3 (03)", 4: "Exatamente 4", 5: "Exatamente 5"}
-        return mapa.get(qtd, "Livre (0 a 5)")
-    return "1 a 3" if 1 <= qtd <= 3 else "Livre (0 a 5)"
+        mapa_exato = {
+            0: "0 (Nenhuma)", 1: "Exatamente 1 (01)", 2: "Exatamente 2 (02)",
+            3: "Exatamente 3 (03)", 4: "Exatamente 4", 5: "Exatamente 5"
+        }
+        return mapa_exato.get(qtd, "Livre (0 a 5)")
+
+    # Modo Elástico (Evita o engessamento em números pontuais)
+    if qtd == 0:
+        return "0 a 2"
+    elif qtd == 1:
+        return "0 a 3"
+    elif qtd == 2:
+        return "0 a 3"
+    elif qtd == 3:
+        return "1 a 3"
+    elif qtd == 4:
+        return "0 a 4"
+    elif qtd >= 5:
+        return "Livre (0 a 5)"
+    return "Livre (0 a 5)"
 
 def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
     if flexivel:
@@ -232,28 +251,58 @@ def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
         if low == min_v and high == max_v: return label
     return "Livre (0 a 5)"
 
-def extrair_filtros_de_jogo(dezenas, modo="exato", margem_soma=20):
+# ==============================================================================
+# ENGENHARIA REVERSA COM RESTRIÇÕES CALIBRADORAS ECONÔMICAS
+# ==============================================================================
+def extrair_filtros_de_jogo(dezenas, modo="elastico", margem_soma=20):
     dezenas = sorted(list(set(dezenas)))
     total_dezenas = len(dezenas)
-    if not (15 <= total_dezenas <= 25): return None
+    if not (15 <= total_dezenas <= 25): 
+        return None
+
     l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
     for n in dezenas:
         l_cnt[ROW_LOOKUP[n]] += 1
         c_cnt[COL_LOOKUP[n]] += 1
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
+
+    # Calibrador de Pares (Concentra nos padrões estatísticos mais comuns)
     pares_total = sum(1 for n in dezenas if PAR_LOOKUP[n])
+    if pares_total in [7, 8]:
+        pares_calibrados = ["7P / 8I", "8P / 7I"]
+    elif pares_total <= 6:
+        pares_calibrados = ["6P / 9I", "7P / 8I"]
+    else:
+        pares_calibrados = ["8P / 7I", "9P / 6I"]
+
+    # Calibrador de Primos (Janela segura de ±1)
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
+    primos_calibrados = sorted(list({max(3, primos_total - 1), primos_total, min(7, primos_total + 1)}))
+
+    # Calibrador de Moldura (Faixa ideal: 8 a 11)
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
+    moldura_calibrada = sorted(list({max(8, moldura_total - 1), moldura_total, min(11, moldura_total + 1)}))
+
+    # Calibrador da Cruz Central (Faixa equilibrada de 4 a 6)
     cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
-    soma_total = sum(dezenas)
+    cruz_calibrada = sorted(list({max(4, cruz_total - 1), cruz_total, min(7, cruz_total + 1)}))
+
+    # Faixa de Soma segura da Lotofácil (165 a 225)
+    soma_total = sum(dezenas[:15]) if total_dezenas > 15 else sum(dezenas)
+    faixa_soma_min = max(165, soma_total - margem_soma)
+    faixa_soma_max = min(225, soma_total + margem_soma)
+
     return {
-        "linhas": [mapear_quantidade_para_rotulo(q, "exato") for q in l_cnt],
-        "colunas": [mapear_quantidade_para_rotulo(q, "exato") for q in c_cnt],
-        "diag_cresc": [mapear_quantidade_para_rotulo(q, "exato") for q in dc_cnt],
-        "diag_decresc": [mapear_quantidade_para_rotulo(q, "exato") for q in dd_cnt],
-        "primos": [primos_total], "pares": [f"{pares_total}P / {15 - pares_total}I"],
-        "moldura": [moldura_total], "cruz": [cruz_total], "soma": (max(100, soma_total - margem_soma), min(300, soma_total + margem_soma))
+        "linhas": [mapear_quantidade_para_rotulo(q, modo) for q in l_cnt],
+        "colunas": [mapear_quantidade_para_rotulo(q, modo) for q in c_cnt],
+        "diag_cresc": [mapear_quantidade_para_rotulo(q, modo) for q in dc_cnt],
+        "diag_decresc": [mapear_quantidade_para_rotulo(q, modo) for q in dd_cnt],
+        "primos": primos_calibrados,
+        "pares": pares_calibrados,
+        "moldura": moldura_calibrada,
+        "cruz": cruz_calibrada,
+        "soma": (faixa_soma_min, faixa_soma_max)
     }
 
 def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
@@ -371,10 +420,6 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
     return relatorio, placar
 
 def calcular_ciclo_lotofacil(historico):
-    """
-    Rastreia o ciclo cronológico real da Lotofácil (do passado para o presente).
-    Assim que as 25 dezenas saem, o ciclo fecha e um novo se inicia.
-    """
     todas_25 = set(range(1, 26))
     if not historico:
         return {"concursos_no_ciclo": 0, "ja_deram": [], "faltam": sorted(list(todas_25)), "ciclo_fechado": False}
@@ -386,7 +431,6 @@ def calcular_ciclo_lotofacil(historico):
         dezenas_vistas.update(sorteio)
         concursos_ciclo += 1
         if len(dezenas_vistas) == 25:
-            # Ciclo fechou neste concurso; reinicia para o próximo
             dezenas_vistas = set()
             concursos_ciclo = 0
 
@@ -408,8 +452,8 @@ def render_html_seguro(conteudo_html, altura=380):
         components.html(conteudo_html, height=altura, scrolling=False)
 
 def render_cartao_sorteio_html(dezenas, titulo="CARTÃO OFICIAL DO SORTEIO"):
-    bolas_html = "".join([f"<span style='display:inline-flex;align-items:center;justify-content:center;width:45px;height:45px;background:#facc15;color:#000000;font-weight:900;font-size:20px;border-radius:50%;margin:0 4px;border:3px solid #000000;font-family:monospace;'>{n:02d}</span>" for n in dezenas])
-    st.markdown(f'''<div style="background:#ffffff;border:4px solid #000000;border-radius:12px;padding:14px;margin:8px 0;text-align:center;"><div style="font-weight:900;color:#000000;font-size:16px;margin-bottom:8px;text-transform:uppercase;">🏆 {titulo}</div><div style="display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px;">{bolas_html}</div></div>''', unsafe_allow_html=True)
+    bolas_html = "".join([f"<span style='display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#facc15;color:#000000;font-weight:900;font-size:22px;border-radius:50%;margin:0 4px;border:3px solid #000000;font-family:monospace;'>{n:02d}</span>" for n in dezenas])
+    st.markdown(f'''<div style="background:#ffffff;border:4px solid #000000;border-radius:12px;padding:14px;margin:8px 0;text-align:center;"><div style="font-weight:900;color:#000000;font-size:18px;margin-bottom:8px;text-transform:uppercase;">🏆 {titulo}</div><div style="display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px;">{bolas_html}</div></div>''', unsafe_allow_html=True)
 
 def render_volante_conferencia(jogo, dezenas_sorteio, titulo=""):
     jogo_set, sorteio_set = set(jogo), set(dezenas_sorteio)
@@ -417,15 +461,19 @@ def render_volante_conferencia(jogo, dezenas_sorteio, titulo=""):
     for r in range(5):
         for c in range(5):
             n = r * 5 + c + 1
-            if n in jogo_set and n in sorteio_set: celulas += f'<div style="width:48px;height:48px;background:#facc15;color:#000000;font-weight:900;border:3px solid #000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;font-size:18px;">{n:02d}<span style="font-size:10px;line-height:6px;font-weight:900;">★</span></div>'
-            elif n in jogo_set: celulas += f'<div style="width:48px;height:48px;background:#38bdf8;color:#000000;font-weight:900;border:3px solid #000000;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:18px;">{n:02d}</div>'
-            elif n in sorteio_set: celulas += f'<div style="width:48px;height:48px;background:#ffffff;color:#000000;font-weight:900;border:3px dashed #000000;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:18px;">{n:02d}</div>'
-            else: celulas += f'<div style="width:48px;height:48px;background:#ffffff;color:#000000;border:1px solid #000000;font-weight:900;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:18px;">{n:02d}</div>'
-    render_html_seguro(f'''<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{{box-sizing:border-box;}}body{{margin:0;padding:0;display:flex;justify-content:center;background:transparent;font-family:Arial,sans-serif;}}.box{{background:#fff;border:4px solid #000000;border-radius:10px;padding:12px;width:fit-content;}}.grid{{display:grid;grid-template-columns:repeat(5,48px);gap:6px;}}</style></head><body><div class="box"><div style="font-weight:900;font-size:16px;margin-bottom:10px;color:#000000;text-align:center;">{titulo}</div><div class="grid">{celulas}</div></div></body></html>''', 340)
+            if n in jogo_set and n in sorteio_set: 
+                celulas += f'<div style="width:50px;height:50px;background:#facc15;color:#000000;font-weight:900;border:3px solid #000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}<span style="font-size:11px;line-height:6px;font-weight:900;">★</span></div>'
+            elif n in jogo_set: 
+                celulas += f'<div style="width:50px;height:50px;background:#38bdf8;color:#000000;font-weight:900;border:3px solid #000000;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}</div>'
+            elif n in sorteio_set: 
+                celulas += f'<div style="width:50px;height:50px;background:#ffffff;color:#000000;font-weight:900;border:3px dashed #000000;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}</div>'
+            else: 
+                celulas += f'<div style="width:50px;height:50px;background:#ffffff;color:#000000;border:1px solid #000000;font-weight:900;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}</div>'
+    render_html_seguro(f'''<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{{box-sizing:border-box;}}body{{margin:0;padding:0;display:flex;justify-content:center;background:transparent;font-family:Arial,sans-serif;}}.box{{background:#fff;border:4px solid #000000;border-radius:10px;padding:12px;width:fit-content;}}.grid{{display:grid;grid-template-columns:repeat(5,50px);gap:6px;}}</style></head><body><div class="box"><div style="font-weight:900;font-size:18px;margin-bottom:10px;color:#000000;text-align:center;">{titulo}</div><div class="grid">{celulas}</div></div></body></html>''', 360)
 
 
 # ==============================================================================
-# 🛠️ ETAPA 2: INICIALIZAÇÃO DE ESTADO
+# 🛠️ ETAPA 2: ESTADO DA SESSÃO
 # ==============================================================================
 
 if "historico" not in st.session_state:
@@ -460,7 +508,7 @@ def aplicar_preset(nome_preset):
     st.session_state["sel_pares"] = cfg_p["pares"]
     st.session_state["sel_moldura"] = cfg_p["moldura"]
     st.session_state["sel_cruz"] = cfg_p.get("cruz", [4, 5, 6])
-    soma_raw = cfg_p.get("soma", (170, 220))
+    soma_raw = cfg_p.get("soma", (165, 225))
     st.session_state["sel_soma"] = (int(soma_raw[0]), int(soma_raw[1]))
 
 if "filtro_inicial_carregado" not in st.session_state:
@@ -475,7 +523,7 @@ def toggle_dezena(n):
 
 
 # ==============================================================================
-# 🛠️ ETAPA 3: INTERFACE DO APLICATIVO (ABAS 1 A 6)
+# 🛠️ ETAPA 3: INTERFACE PRINCIPAL
 # ==============================================================================
 
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
@@ -499,23 +547,23 @@ with tab_cartela:
         c_el1, c_el2, c_el3, c_el4 = st.columns([1, 1, 1, 1.4])
         with c_el1:
             st.markdown("#### 💎 MELHORES PRIMOS")
-            st.markdown(f"<div style='font-size:1.5rem;color:#000000;font-weight:900;'>{' • '.join([f'{n:02d}' for n in analise_elite['primos']])}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:1.6rem;color:#000000;font-weight:900;'>{' • '.join([f'{n:02d}' for n in analise_elite['primos']])}</div>", unsafe_allow_html=True)
         with c_el2:
             st.markdown("#### ⚖️ MELHORES PARES")
-            st.markdown(f"<div style='font-size:1.5rem;color:#000000;font-weight:900;'>{' • '.join([f'{n:02d}' for n in analise_elite['pares']])}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:1.6rem;color:#000000;font-weight:900;'>{' • '.join([f'{n:02d}' for n in analise_elite['pares']])}</div>", unsafe_allow_html=True)
         with c_el3:
             st.markdown("#### 📊 MELHORES COLUNAS (C01-C05)")
-            col_badges = "".join([f"<span style='display:inline-block;background:#facc15;color:#000000;font-weight:900;padding:4px 9px;margin:2px 3px;border:3px solid #000000;border-radius:6px;font-size:1.15rem;'>C{c+1:02d}</span>" for c in analise_elite["colunas"]])
+            col_badges = "".join([f"<span style='display:inline-block;background:#facc15;color:#000000;font-weight:900;padding:5px 10px;margin:2px 4px;border:3px solid #000000;border-radius:6px;font-size:1.2rem;'>C{c+1:02d}</span>" for c in analise_elite["colunas"]])
             st.markdown(f"<div>{col_badges}</div>", unsafe_allow_html=True)
         with c_el4:
             st.markdown("#### 📐 MELHORES DIAGONAIS")
-            dc_badges = "".join([f"<span style='display:inline-block;background:#fef08a;color:#000000;font-weight:900;padding:2px 7px;margin:2px 3px;border:2px solid #000000;border-radius:4px;font-size:1.05rem;'>DC{d+1:02d}</span>" for d in analise_elite["dc"]])
-            dd_badges = "".join([f"<span style='display:inline-block;background:#fef08a;color:#000000;font-weight:900;padding:2px 7px;margin:2px 3px;border:2px solid #000000;border-radius:4px;font-size:1.05rem;'>DD{d+1:02d}</span>" for d in analise_elite["dd"]])
+            dc_badges = "".join([f"<span style='display:inline-block;background:#fef08a;color:#000000;font-weight:900;padding:3px 8px;margin:2px 3px;border:2px solid #000000;border-radius:4px;font-size:1.1rem;'>DC{d+1:02d}</span>" for d in analise_elite["dc"]])
+            dd_badges = "".join([f"<span style='display:inline-block;background:#fef08a;color:#000000;font-weight:900;padding:3px 8px;margin:2px 3px;border:2px solid #000000;border-radius:4px;font-size:1.1rem;'>DD{d+1:02d}</span>" for d in analise_elite["dd"]])
             st.markdown(f"<div style='margin-bottom:4px;'><b>CRESC:</b> {dc_badges}</div><div><b>DECRESC:</b> {dd_badges}</div>", unsafe_allow_html=True)
 
         st.divider()
         pool_elite_ordenado = analise_elite["pool_elite"]
-        st.markdown(f"<div style='font-size:1.4rem;color:#000000;font-weight:900;'>🎯 POOL CONSOLIDADO DAS ELITES ({len(pool_elite_ordenado)} DEZENAS):<br><span style='background:#facc15;padding:8px 16px;border:3px solid #000000;border-radius:8px;display:inline-block;margin-top:8px;font-size:1.3rem;'>{' - '.join([f'{n:02d}' for n in pool_elite_ordenado])}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:1.5rem;color:#000000;font-weight:900;'>🎯 POOL CONSOLIDADO DAS ELITES ({len(pool_elite_ordenado)} DEZENAS):<br><span style='background:#facc15;padding:8px 16px;border:3px solid #000000;border-radius:8px;display:inline-block;margin-top:8px;font-size:1.4rem;'>{' - '.join([f'{n:02d}' for n in pool_elite_ordenado])}</span></div>", unsafe_allow_html=True)
 
         c_act1, c_act2 = st.columns(2)
         with c_act1:
@@ -524,7 +572,7 @@ with tab_cartela:
                 st.rerun()
         with c_act2:
             if st.button("🎛️ GERAR E ATIVAR FILTRO COM ESTAS CONDICIONANTES", use_container_width=True):
-                preset_elite = extrair_filtros_de_jogo(pool_elite_ordenado, modo="flexivel")
+                preset_elite = extrair_filtros_de_jogo(pool_elite_ordenado, modo="elastico")
                 st.session_state.presets_filtros["FILTRO_ELITE_CONDICIONANTES"] = preset_elite
                 salvar_presets_persistidos(st.session_state.presets_filtros)
                 aplicar_preset("FILTRO_ELITE_CONDICIONANTES")
@@ -570,17 +618,17 @@ with tab_cartela:
     col_inf1, col_inf2 = st.columns([3, 1])
     qtd_sel = len(st.session_state.pool_trabalho)
     with col_inf1:
-        st.markdown(f"<div style='font-size:1.5rem;font-weight:900;background:#fef08a;border:3px solid #000000;padding:16px;border-radius:8px;'>DEZENAS ATIVAS ({qtd_sel}):<br><span style='font-size:1.3rem;'>{' - '.join([f'{n:02d}' for n in sorted(list(st.session_state.pool_trabalho))]) if qtd_sel else 'NENHUMA'}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:1.6rem;font-weight:900;background:#fef08a;border:3px solid #000000;padding:16px;border-radius:8px;'>DEZENAS ATIVAS ({qtd_sel}):<br><span style='font-size:1.4rem;'>{' - '.join([f'{n:02d}' for n in sorted(list(st.session_state.pool_trabalho))]) if qtd_sel else 'NENHUMA'}</span></div>", unsafe_allow_html=True)
     with col_inf2:
         st.metric("Total Selecionado", f"{qtd_sel} / 25")
         st.markdown(f"<div style='font-size:1.6rem;font-weight:900;margin-top:10px;'>Jogos Brutos: {math.comb(qtd_sel, 15) if qtd_sel >= 15 else 0:,}</div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (01 A 03)
+# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
 # ------------------------------------------------------------------------------
 with tab_config:
     st.markdown("### 🎛️ FILTROS ESTRUTURAIS & ENGENHARIA REVERSA")
-    tipo_reverso = st.radio("Selecione a Rotina de Engenharia Reversa:", ["🏛️ Rotina 1: Histórica Multiconcursos", "⚡ Rotina 2: Amostra Personalizada"], horizontal=True)
+    tipo_reverso = st.radio("Selecione a Rotina de Engenharia Reversa:", ["🏛️ Rotina 1: Histórica Multiconcursos", "⚡ Rotina 2: Dezenas Digitadas a Mão (Filtro Elástico)"], horizontal=True)
 
     if tipo_reverso.startswith("🏛️ Rotina 1"):
         with st.container(border=True):
@@ -606,28 +654,30 @@ with tab_config:
                 st.rerun()
     else:
         with st.container(border=True):
-            st.markdown("#### ⚡ ENGENHARIA REVERSA POR DEZENAS DIGITADAS")
+            st.markdown("#### ⚡ ENGENHARIA REVERSA POR DEZENAS DIGITADAS (SEM ENGESSAR)")
+            st.caption("Quando uma linha der 4 vira '0 a 4', se der 2 vira '0 a 3', equilibrando o volume com filtros de Pares, Primos e Moldura.")
             if "input_dezenas_digitadas_texto" not in st.session_state: st.session_state.input_dezenas_digitadas_texto = "01 03 05 11 12 13 14 15 17 19 21 22 23 24 25"
-            col_input_res, col_input_nome, col_input_tipo = st.columns([2.5, 1.8, 1.7])
-            with col_input_res: entrada_dezenas_filtro = st.text_area("Dezenas (15 a 25 números):", value=st.session_state.input_dezenas_digitadas_texto, height=75)
+            col_input_res, col_input_nome = st.columns([2.5, 1.8])
+            with col_input_res: entrada_dezenas_filtro = st.text_area("Dezenas do Cartão de Referência (15 a 25 números):", value=st.session_state.input_dezenas_digitadas_texto, height=80)
             with col_input_nome:
-                nome_filtro_novo = st.text_input("Nome do Filtro:", value="MEU_NOVO_FILTRO")
-                substituir_pool_opcao = st.checkbox("Limpar Pool Anterior", value=True)
-            with col_input_tipo: tipo_tolerancia = st.selectbox("Nível de Tolerância:", ["Perfil Flexível", "Perfil Exato"], index=0)
+                nome_filtro_novo = st.text_input("Nome do Filtro:", value="MEU_FILTRO_ELASTICO")
+                substituir_pool_opcao = st.checkbox("Substituir o Pool da Cartela com estas Dezenas", value=True)
 
-            if st.button("⚡ GERAR, GRAVAR E ATIVAR FILTRO", type="primary", use_container_width=True):
+            if st.button("⚡ EXTRAIR RESTRIÇÕES ELÁSTICAS E ATIVAR FILTRO", type="primary", use_container_width=True):
                 nums_parse = [int(x) for x in re.findall(r"\b\d+\b", entrada_dezenas_filtro)]
                 dezenas_limpas = sorted(list(set([n for n in nums_parse if 1 <= n <= 25])))
-                if len(dezenas_limpas) < 15: st.error("Informe pelo menos 15 dezenas válidas para a Lotofácil.")
+                if len(dezenas_limpas) < 15: 
+                    st.error("Informe pelo menos 15 dezenas válidas da Lotofácil.")
                 else:
                     st.session_state.input_dezenas_digitadas_texto = " ".join([f"{n:02d}" for n in dezenas_limpas])
-                    preset_extraido = extrair_filtros_de_jogo(dezenas_limpas, modo="exato" if "Exato" in tipo_tolerancia else "flexivel")
-                    nome_salvar = nome_filtro_novo.strip() or "MEU_NOVO_FILTRO"
+                    # Gera com o modelo elástico calibrado
+                    preset_extraido = extrair_filtros_de_jogo(dezenas_limpas, modo="elastico")
+                    nome_salvar = nome_filtro_novo.strip() or "MEU_FILTRO_ELASTICO"
                     st.session_state.presets_filtros[nome_salvar] = preset_extraido
                     salvar_presets_persistidos(st.session_state.presets_filtros)
                     aplicar_preset(nome_salvar)
                     if substituir_pool_opcao: st.session_state.pool_trabalho = set(dezenas_limpas)
-                    st.success(f"Filtro '{nome_salvar}' ativado e salvo permanentemente!")
+                    st.success(f"Filtro elástico '{nome_salvar}' ativado com sucesso! As restrições foram abertas em faixas de 0 a X.")
                     st.rerun()
 
     # GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL
@@ -660,7 +710,7 @@ with tab_config:
                         "pares": st.session_state.get("sel_pares", ["8P / 7I"]),
                         "moldura": st.session_state.get("sel_moldura", [9]),
                         "cruz": st.session_state.get("sel_cruz", [4, 5, 6]),
-                        "soma": (int(st.session_state.get("sel_soma", (170, 220))[0]), int(st.session_state.get("sel_soma", (170, 220))[1]))
+                        "soma": (int(st.session_state.get("sel_soma", (165, 225))[0]), int(st.session_state.get("sel_soma", (165, 225))[1]))
                     }
                     st.session_state.presets_filtros[nome_novo_filtro.strip()] = novo_preset
                     salvar_presets_persistidos(st.session_state.presets_filtros)
@@ -707,7 +757,7 @@ with tab_config:
                     limites_dd.append(OPCOES_QUANTIDADE[esc])
 
     with st.container(border=True):
-        st.markdown("#### 5️⃣ PRIMOS, PARES, MOLDURA, CRUZ CENTRAL E FAIXA DE SOMA")
+        st.markdown("#### 5️⃣ RESTRIÇÕES CALIBRADORAS: PRIMOS, PARES, MOLDURA, CRUZ E SOMA")
         c_p1, c_p2, c_p3, c_p4, c_p5 = st.columns(5)
         with c_p1: primos_sel = st.multiselect("Primos:", list(range(10)), default=st.session_state.get("sel_primos", [5]), key="sel_primos")
         with c_p2:
@@ -717,8 +767,8 @@ with tab_config:
         with c_p3: moldura_sel = st.multiselect("Moldura:", list(range(16)), default=st.session_state.get("sel_moldura", [9]), key="sel_moldura")
         with c_p4: cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [4, 5, 6]), key="sel_cruz")
         with c_p5:
-            val_soma_estado = st.session_state.get("sel_soma", (170, 220))
-            soma_min_val, soma_max_val = (int(val_soma_estado[0]), int(val_soma_estado[1])) if isinstance(val_soma_estado, (list, tuple)) and len(val_soma_estado) == 2 else (170, 220)
+            val_soma_estado = st.session_state.get("sel_soma", (165, 225))
+            soma_min_val, soma_max_val = (int(val_soma_estado[0]), int(val_soma_estado[1])) if isinstance(val_soma_estado, (list, tuple)) and len(val_soma_estado) == 2 else (165, 225)
             faixa_soma = st.slider("Faixa de Soma:", 100, 300, (soma_min_val, soma_max_val), key="sel_soma")
 
     config_total = {
@@ -733,7 +783,7 @@ with tab_config:
             resultados = executar_varredura_pool(st.session_state.pool_trabalho, config_total, st.empty(), st.empty(), teto_max=None)
             st.session_state.jogos_aprovados = resultados
             if resultados: st.markdown(f"<div class='progresso-gigante'>✅ SUCESSO: {len(resultados):,} APOSTAS GERADAS</div>", unsafe_allow_html=True)
-            else: st.warning("⚠️ Nenhuma combinação atendeu aos filtros.")
+            else: st.warning("⚠️ Nenhuma combinação atendeu aos filtros selecionados.")
 
     if st.session_state.jogos_aprovados:
         st.markdown(f"<div class='progresso-gigante'>TOTAL APROVADO: {len(st.session_state.jogos_aprovados):,} APOSTAS</div>", unsafe_allow_html=True)
@@ -754,7 +804,7 @@ with tab_volante:
         jogo_ativo = sorted(jogos_exibir[sel_idx - 1])
         render_volante_conferencia(jogo_ativo, [], f"JOGO #{sel_idx:04d}: {' - '.join([f'{n:02d}' for n in jogo_ativo])}")
     else:
-        st.info("Gere apostas para inspecionar no volante.")
+        st.info("Gere apostas ou carregue um arquivo para inspecionar no volante.")
 
 # ------------------------------------------------------------------------------
 # ABA 4: UPLOAD & FILTRAGEM SUCESSIVA & CONFERÊNCIA (PLACAR 11 A 15)
@@ -768,7 +818,7 @@ with tab_upload:
         jogos_carregados, invalidos = processar_arquivo_upload(conteudo)
         st.session_state.jogos_upload = jogos_carregados
         if invalidos > 0:
-            st.warning(f"⚠️ {invalidos} linha(s) ignoradas.")
+            st.warning(f"⚠️ {invalidos} linha(s) ignoradas por formato inválido.")
 
     if st.session_state.jogos_upload:
         jogos_up = st.session_state.jogos_upload
@@ -776,7 +826,7 @@ with tab_upload:
         st.markdown(f"<div class='progresso-gigante'>ARQUIVO CARREGADO: {total_up:,} APOSTAS EM MEMÓRIA</div>", unsafe_allow_html=True)
 
         with st.container(border=True):
-            st.markdown("#### ⚡ FILTRAR ARQUIVO CARREGADO")
+            st.markdown("#### ⚡ FILTRAR ARQUIVO CARREGADO COM O FILTRO ATIVO")
             c_flt1, c_flt2 = st.columns([2, 1])
             with c_flt1:
                 if st.button("🔍 APLICAR FILTROS ATIVOS NO ARQUIVO", type="primary", use_container_width=True):
@@ -814,9 +864,9 @@ with tab_upload:
                     n = r * 5 + c + 1
                     freq = cnt_nums[n]
                     bg = "#ffffff" if freq == 0 else "#fef08a"
-                    celulas_up_heat += f'<div style="width:48px;height:48px;background:{bg};color:#000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;border:2px solid #000000;box-sizing:border-box;"><span style="font-size:14px;font-weight:900;">{n:02d}</span><span style="font-size:11px;font-weight:900;">{freq}x</span></div>'
+                    celulas_up_heat += f'<div style="width:50px;height:50px;background:{bg};color:#000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;border:2px solid #000000;box-sizing:border-box;"><span style="font-size:15px;font-weight:900;">{n:02d}</span><span style="font-size:12px;font-weight:900;">{freq}x</span></div>'
 
-            render_html_seguro(f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{{box-sizing:border-box;}}body{{margin:0;padding:0;background:transparent;display:flex;justify-content:center;font-family:Arial,sans-serif;}}.box{{background:#fff;border:4px solid #000000;border-radius:10px;padding:12px;width:fit-content;}}.grid{{display:grid;grid-template-columns:repeat(5,48px);gap:5px;}}</style></head><body><div class="box"><div class="grid">{celulas_up_heat}</div></div></body></html>', 310)
+            render_html_seguro(f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{{box-sizing:border-box;}}body{{margin:0;padding:0;background:transparent;display:flex;justify-content:center;font-family:Arial,sans-serif;}}.box{{background:#fff;border:4px solid #000000;border-radius:10px;padding:12px;width:fit-content;}}.grid{{display:grid;grid-template-columns:repeat(5,50px);gap:5px;}}</style></head><body><div class="box"><div class="grid">{celulas_up_heat}</div></div></body></html>', 320)
 
         with col_conf_right:
             st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS")
@@ -919,14 +969,14 @@ with tab_historico:
     with col_c1:
         st.markdown("#### ✅ Dezenas que já saíram no ciclo:")
         ja_deram_str = " • ".join([f"{n:02d}" for n in ciclo_dados['ja_deram']]) if ciclo_dados['ja_deram'] else "Nenhuma dezena registrada"
-        st.markdown(f"<div style='background:#facc15;color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.2rem;font-weight:900;'>{ja_deram_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background:#facc15;color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.3rem;font-weight:900;'>{ja_deram_str}</div>", unsafe_allow_html=True)
         st.markdown(f"**Total já sorteadas:** `{len(ciclo_dados['ja_deram'])} / 25`")
 
     with col_c2:
         st.markdown("#### ⏳ Dezenas que FALTAM (Ausentes no ciclo):")
         faltam_str = " • ".join([f"{n:02d}" for n in ciclo_dados['faltam']]) if ciclo_dados['faltam'] else "🎉 CICLO FECHADO!"
         bg_faltam = "#fef08a" if ciclo_dados['faltam'] else "#38bdf8"
-        st.markdown(f"<div style='background:{bg_faltam};color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.3rem;font-weight:900;'>{faltam_str}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background:{bg_faltam};color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.4rem;font-weight:900;'>{faltam_str}</div>", unsafe_allow_html=True)
         st.markdown(f"**Total que faltam:** `{len(ciclo_dados['faltam'])} dezenas`")
 
     if ciclo_dados['ciclo_fechado']:
