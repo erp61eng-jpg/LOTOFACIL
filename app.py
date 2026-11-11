@@ -100,9 +100,7 @@ MOLDURA_SET = (
     {r * 5 + 5 for r in range(5)}
 )
 
-# Cruz Central da Matriz 5x5 (Linha do meio e Coluna do meio)
 CRUZ_CENTRAL_SET = {3, 8, 11, 12, 13, 14, 15, 18, 23}
-
 DEZENAS_BASE_LOTOFACIL = {1, 3, 5, 12, 13, 14, 23, 25}
 
 FALLBACK_LOTOFACIL = [
@@ -110,6 +108,11 @@ FALLBACK_LOTOFACIL = [
     [2, 3, 5, 6, 8, 10, 12, 14, 16, 18, 19, 21, 23, 24, 25],
     [1, 3, 4, 6, 9, 11, 13, 15, 16, 18, 20, 21, 22, 24, 25]
 ]
+
+HEADERS_CAIXA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*"
+}
 
 PAR_LOOKUP = [False] + [(n % 2 == 0) for n in range(1, 26)]
 PRIMO_LOOKUP = [False] + [(n in PRIMOS_LOTOFACIL) for n in range(1, 26)]
@@ -185,7 +188,12 @@ def calcular_metricas_elliott(historico):
         score_fib = 3.0 if PROPS[n]["is_fib"] else 0.0
         penalidade = -3.0 if atr > 10 else 0.0
         score_total = max(0.0, score_retracao + score_impulso + score_fib + penalidade)
-        dados[n] = {"numero": n, "score": round(score_total, 1), "atraso": atr, "is_fib": PROPS[n]["is_fib"], "is_primo": PROPS[n]["is_primo"], "is_par": PROPS[n]["is_par"], "is_cruz": PROPS[n]["is_cruz"], "dc": PROPS[n]["dc"], "dd": PROPS[n]["dd"], "col": PROPS[n]["c"]}
+        dados[n] = {
+            "numero": n, "score": round(score_total, 1), "atraso": atr,
+            "is_fib": PROPS[n]["is_fib"], "is_primo": PROPS[n]["is_primo"],
+            "is_par": PROPS[n]["is_par"], "is_cruz": PROPS[n]["is_cruz"],
+            "dc": PROPS[n]["dc"], "dd": PROPS[n]["dd"], "col": PROPS[n]["c"]
+        }
     return dados
 
 def extrair_analise_elite(dados_calor):
@@ -205,7 +213,10 @@ def extrair_analise_elite(dados_calor):
     melhores_col = sorted(col_scores.keys(), key=lambda c: col_scores[c], reverse=True)[:3]
     
     pool_elite = sorted(list(set(melhores_primos) | set(melhores_pares) | set(melhores_impares)))
-    return {"primos": melhores_primos, "pares": melhores_pares, "impares": melhores_impares, "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite}
+    return {
+        "primos": melhores_primos, "pares": melhores_pares, "impares": melhores_impares,
+        "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
+    }
 
 def mapear_quantidade_para_rotulo(qtd, modo="exato"):
     if modo == "exato":
@@ -360,25 +371,33 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
     return relatorio, placar
 
 def calcular_ciclo_lotofacil(historico):
+    """
+    Rastreia o ciclo cronológico real da Lotofácil (do passado para o presente).
+    Assim que as 25 dezenas saem, o ciclo fecha e um novo se inicia.
+    """
     todas_25 = set(range(1, 26))
-    sorteios_invertidos = list(reversed(historico))
-    
-    sorteios_do_ciclo_atual = []
+    if not historico:
+        return {"concursos_no_ciclo": 0, "ja_deram": [], "faltam": sorted(list(todas_25)), "ciclo_fechado": False}
+
     dezenas_vistas = set()
-    
-    for sorteio in sorteios_invertidos:
-        sorteios_do_ciclo_atual.append(sorteio)
+    concursos_ciclo = 0
+
+    for sorteio in historico:
         dezenas_vistas.update(sorteio)
+        concursos_ciclo += 1
         if len(dezenas_vistas) == 25:
-            break
-            
-    faltam = sorted(list(todas_25 - dezenas_vistas))
+            # Ciclo fechou neste concurso; reinicia para o próximo
+            dezenas_vistas = set()
+            concursos_ciclo = 0
+
+    faltam = sorted(list(todas_25 - dezenas_vistas)) if dezenas_vistas else []
     ja_deram = sorted(list(dezenas_vistas))
+
     return {
-        "concursos_no_ciclo": len(sorteios_do_ciclo_atual),
+        "concursos_no_ciclo": concursos_ciclo,
         "ja_deram": ja_deram,
         "faltam": faltam,
-        "ciclo_fechado": len(faltam) == 0
+        "ciclo_fechado": len(dezenas_vistas) == 0
     }
 
 def render_html_seguro(conteudo_html, altura=380):
@@ -773,7 +792,6 @@ with tab_upload:
                     st.download_button(f"💾 BAIXAR LOTE FILTRADO ({qtd_flt:,})", data=txt_flt, file_name="lotofacil_lote_filtrado.txt", mime="text/plain", use_container_width=True)
 
         st.divider()
-        
         col_diag_left, col_conf_right = st.columns([1.25, 1.0], gap="large")
 
         with col_diag_left:
@@ -786,8 +804,8 @@ with tab_upload:
 
             m1, m2, m3 = st.columns(3)
             m1.metric("Total", f"{total_up:,}")
-            m2.metric("Soma Média", f"{sum(somas)/len(somas):.1f}")
-            m3.metric("Mais Freq.", f"{cnt_nums.most_common(1)[0][0]:02d}")
+            m2.metric("Soma Média", f"{sum(somas)/len(somas):.1f}" if somas else "0")
+            m3.metric("Mais Freq.", f"{cnt_nums.most_common(1)[0][0]:02d}" if cnt_nums else "--")
 
             st.markdown("#### 🔥 FREQUÊNCIA NA MATRIZ (5x5)")
             celulas_up_heat = ""
@@ -802,29 +820,29 @@ with tab_upload:
 
         with col_conf_right:
             st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS")
-            
             modo_origem = st.radio("Origem do Sorteio:", ["Último Sorteio Oficial", "Digitar Concurso Específico", "Digitar Dezenas Manualmente"], horizontal=True)
-            
             dezenas_conf = []
-            
+
             if modo_origem == "Último Sorteio Oficial":
                 dezenas_conf = sorted(st.session_state.historico[-1]) if st.session_state.historico else []
             elif modo_origem == "Digitar Concurso Específico":
                 num_conc_busca = st.number_input("Digite o número do Concurso:", min_value=1, value=3000, step=1)
                 if st.button("🔍 Buscar Concurso na Caixa", use_container_width=True):
-                    with st.spinner(f"A consultar o concurso {num_conc_busca}..."):
-                        r_esp = requests.get(f"https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/{num_conc_busca}", timeout=10, verify=False)
-                        if r_esp.status_code == 200:
-                            dados_esp = r_esp.json()
-                            dezenas_esp = sorted([int(x) for x in dados_esp.get("listaDezenas", [])])
-                            if len(dezenas_esp) == 15:
-                                st.session_state["concurso_buscado_temp"] = dezenas_esp
-                                st.success(f"Concurso #{num_conc_busca} carregado com sucesso!")
+                    with st.spinner(f"Consultando o concurso {num_conc_busca}..."):
+                        try:
+                            r_esp = requests.get(f"https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/{num_conc_busca}", headers=HEADERS_CAIXA, timeout=10, verify=False)
+                            if r_esp.status_code == 200:
+                                dados_esp = r_esp.json()
+                                dezenas_esp = sorted([int(x) for x in dados_esp.get("listaDezenas", [])])
+                                if len(dezenas_esp) == 15:
+                                    st.session_state["concurso_buscado_temp"] = dezenas_esp
+                                    st.success(f"Concurso #{num_conc_busca} carregado com sucesso!")
+                                else:
+                                    st.error("Erro ao ler as dezenas do concurso retornado.")
                             else:
-                                st.error("Erro ao ler as dezenas do concurso.")
-                        else:
-                            st.error("Concurso não encontrado ou erro na API da Caixa.")
-                
+                                st.error(f"Erro na resposta da Caixa (Status: {r_esp.status_code}).")
+                        except Exception as e:
+                            st.error(f"Falha de conexão com a API da Caixa: {e}")
                 dezenas_conf = st.session_state.get("concurso_buscado_temp", [])
             else:
                 ult_def = st.session_state.historico[-1] if st.session_state.historico else [1, 2, 4, 7, 10, 11, 13, 14, 15, 17, 19, 20, 22, 23, 25]
@@ -873,27 +891,34 @@ with tab_historico:
     col_sync1, col_sync2 = st.columns([1, 2])
     with col_sync1:
         if st.button("🌐 SINCRONIZAR COM A CAIXA AGORA", type="primary", use_container_width=True):
-            r = requests.get("https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil", timeout=10, verify=False)
-            if r.status_code == 200:
-                ult = r.json()
-                dezenas_sorteadas = sorted([int(x) for x in ult.get("listaDezenas", [])])
-                if len(dezenas_sorteadas) == 15 and dezenas_sorteadas not in st.session_state.historico:
-                    st.session_state.historico.append(dezenas_sorteadas)
-                    st.success(f"Concurso #{ult.get('numero')} sincronizado!")
-                    st.rerun()
+            try:
+                r = requests.get("https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil", headers=HEADERS_CAIXA, timeout=10, verify=False)
+                if r.status_code == 200:
+                    ult = r.json()
+                    dezenas_sorteadas = sorted([int(x) for x in ult.get("listaDezenas", [])])
+                    if len(dezenas_sorteadas) == 15 and dezenas_sorteadas not in st.session_state.historico:
+                        st.session_state.historico.append(dezenas_sorteadas)
+                        st.success(f"Concurso #{ult.get('numero')} sincronizado com sucesso!")
+                        st.rerun()
+                    elif dezenas_sorteadas in st.session_state.historico:
+                        st.info(f"O concurso #{ult.get('numero')} já está presente no histórico.")
+                else:
+                    st.error(f"Erro ao consultar a Caixa: Status {r.status_code}")
+            except Exception as e:
+                st.error(f"Falha de conexão com a API da Caixa: {e}")
 
     st.divider()
 
     ciclo_dados = calcular_ciclo_lotofacil(st.session_state.historico)
     
     st.markdown("### 🔄 ANÁLISE DO CICLO ATUAL DA LOTOFÁCIL")
-    st.markdown(f"**Concursos analisados neste ciclo:** `{ciclo_dados['concursos_no_ciclo']}` concurso(s)")
+    st.markdown(f"**Concursos decorridos neste ciclo:** `{ciclo_dados['concursos_no_ciclo']}` concurso(s)")
     
     col_c1, col_c2 = st.columns(2)
     
     with col_c1:
         st.markdown("#### ✅ Dezenas que já saíram no ciclo:")
-        ja_deram_str = " • ".join([f"{n:02d}" for n in ciclo_dados['ja_deram']]) if ciclo_dados['ja_deram'] else "Nenhuma"
+        ja_deram_str = " • ".join([f"{n:02d}" for n in ciclo_dados['ja_deram']]) if ciclo_dados['ja_deram'] else "Nenhuma dezena registrada"
         st.markdown(f"<div style='background:#facc15;color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.2rem;font-weight:900;'>{ja_deram_str}</div>", unsafe_allow_html=True)
         st.markdown(f"**Total já sorteadas:** `{len(ciclo_dados['ja_deram'])} / 25`")
 
@@ -904,8 +929,8 @@ with tab_historico:
         st.markdown(f"<div style='background:{bg_faltam};color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.3rem;font-weight:900;'>{faltam_str}</div>", unsafe_allow_html=True)
         st.markdown(f"**Total que faltam:** `{len(ciclo_dados['faltam'])} dezenas`")
 
-    if not ciclo_dados['faltam']:
-        st.success("🌟 O ciclo atual completou todas as 25 dezenas e foi encerrado! Um novo ciclo iniciou-se.")
+    if ciclo_dados['ciclo_fechado']:
+        st.success("🌟 O ciclo atual completou todas as 25 dezenas e foi encerrado! O próximo sorteio iniciará um novo ciclo.")
 
 # ------------------------------------------------------------------------------
 # ABA 6: BLOCO DE NOTAS
