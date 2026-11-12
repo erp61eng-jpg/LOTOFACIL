@@ -232,10 +232,6 @@ def extrair_analise_elite(dados_calor):
     }
 
 def mapear_quantidade_para_rotulo_inteligente(qtd):
-    """
-    Constrói um envelope flexível baseado na contagem exata (qtd) encontrada na linha/coluna,
-    permitindo uma margem segura de variação para englobar variações naturais sem engessar.
-    """
     if qtd <= 1:
         return "0 a 3"
     elif qtd == 2:
@@ -334,10 +330,6 @@ def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
     }
 
 def validar_aposta_final_15(jogo, cfg):
-    """
-    VALIDADOR BLINDADO: Verifica estritamente se a contagem real de dezenas 
-    em cada linha, coluna e diagonal está dentro dos limites [min, max] definidos.
-    """
     soma_j = sum(jogo)
     if not (cfg["faixa_soma"][0] <= soma_j <= cfg["faixa_soma"][1]): return False
     if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg["pares_aceitos"]: return False
@@ -353,7 +345,6 @@ def validar_aposta_final_15(jogo, cfg):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # Validação rigorosa dos intervalos inclusivos [min, max]
     for r in range(5):
         min_l, max_l = cfg["linhas"][r]
         if not (min_l <= l_cnt[r] <= max_l): return False
@@ -712,7 +703,6 @@ with tab_config:
                     st.success(f"✅ Filtro flexível '{nome_salvar}' gerado, gravado e ativado com sucesso!")
                     st.rerun()
 
-    # GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL COM BARRA DE SERVIÇO EXPLICITA
     with st.container(border=True):
         st.markdown("#### 💾 GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL")
         col_puxar, col_gravar = st.columns(2)
