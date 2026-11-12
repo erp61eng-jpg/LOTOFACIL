@@ -21,9 +21,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE PRETO E AMARELO - FONTES GIGANTES)
+# ESTILIZAÇÃO CSS GLOBAL (FORÇANDO TEMA CLARO / ALTO CONTRASTE PRETO E AMARELO)
 st.markdown('''
 <style>
+    /* Força fundo branco e texto preto em toda a aplicação */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
     html, body, [class*="css"], .stMarkdown, p, span, label, div, input, textarea, select {
         color: #000000 !important;
         font-weight: 800 !important;
@@ -31,6 +36,14 @@ st.markdown('''
         line-height: 1.6 !important;
     }
     h1, h2, h3, h4 { color: #000000 !important; font-weight: 900 !important; }
+    
+    /* Estilização de Containers / Cards */
+    [data-testid="stVerticalBlock"] > div[style*="border"] {
+        background-color: #f8fafc !important;
+        border: 3px solid #000000 !important;
+        border-radius: 10px !important;
+    }
+
     .stButton > button {
         color: #000000 !important;
         font-size: 1.35rem !important;
@@ -217,9 +230,6 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-# ==============================================================================
-# FUNÇÃO REFORMULADA: MAPEAMENTO ELÁSTICO (NÃO ENGESSA O RESULTADO)
-# ==============================================================================
 def mapear_quantidade_para_rotulo(qtd, modo="elastico"):
     if modo == "exato":
         mapa_exato = {
@@ -228,19 +238,12 @@ def mapear_quantidade_para_rotulo(qtd, modo="elastico"):
         }
         return mapa_exato.get(qtd, "Livre (0 a 5)")
 
-    # Modo Elástico (Evita o engessamento em números pontuais)
-    if qtd == 0:
-        return "0 a 2"
-    elif qtd == 1:
-        return "0 a 3"
-    elif qtd == 2:
-        return "0 a 3"
-    elif qtd == 3:
-        return "1 a 3"
-    elif qtd == 4:
-        return "0 a 4"
-    elif qtd >= 5:
-        return "Livre (0 a 5)"
+    if qtd == 0: return "0 a 2"
+    elif qtd == 1: return "0 a 3"
+    elif qtd == 2: return "0 a 3"
+    elif qtd == 3: return "1 a 3"
+    elif qtd == 4: return "0 a 4"
+    elif qtd >= 5: return "Livre (0 a 5)"
     return "Livre (0 a 5)"
 
 def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
@@ -251,9 +254,6 @@ def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
         if low == min_v and high == max_v: return label
     return "Livre (0 a 5)"
 
-# ==============================================================================
-# ENGENHARIA REVERSA COM RESTRIÇÕES CALIBRADORAS ECONÔMICAS
-# ==============================================================================
 def extrair_filtros_de_jogo(dezenas, modo="elastico", margem_soma=20):
     dezenas = sorted(list(set(dezenas)))
     total_dezenas = len(dezenas)
@@ -267,7 +267,6 @@ def extrair_filtros_de_jogo(dezenas, modo="elastico", margem_soma=20):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # Calibrador de Pares (Concentra nos padrões estatísticos mais comuns)
     pares_total = sum(1 for n in dezenas if PAR_LOOKUP[n])
     if pares_total in [7, 8]:
         pares_calibrados = ["7P / 8I", "8P / 7I"]
@@ -276,19 +275,15 @@ def extrair_filtros_de_jogo(dezenas, modo="elastico", margem_soma=20):
     else:
         pares_calibrados = ["8P / 7I", "9P / 6I"]
 
-    # Calibrador de Primos (Janela segura de ±1)
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
     primos_calibrados = sorted(list({max(3, primos_total - 1), primos_total, min(7, primos_total + 1)}))
 
-    # Calibrador de Moldura (Faixa ideal: 8 a 11)
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
     moldura_calibrada = sorted(list({max(8, moldura_total - 1), moldura_total, min(11, moldura_total + 1)}))
 
-    # Calibrador da Cruz Central (Faixa equilibrada de 4 a 6)
     cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
     cruz_calibrada = sorted(list({max(4, cruz_total - 1), cruz_total, min(7, cruz_total + 1)}))
 
-    # Faixa de Soma segura da Lotofácil (165 a 225)
     soma_total = sum(dezenas[:15]) if total_dezenas > 15 else sum(dezenas)
     faixa_soma_min = max(165, soma_total - margem_soma)
     faixa_soma_max = min(225, soma_total + margem_soma)
@@ -527,7 +522,7 @@ def toggle_dezena(n):
 # ==============================================================================
 
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO • PLACAR COMPLETO (11 A 15 PONTOS)")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • PLACAR COMPLETO (11 A 15 PONTOS)")
 
 tab_cartela, tab_config, tab_volante, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -670,7 +665,6 @@ with tab_config:
                     st.error("Informe pelo menos 15 dezenas válidas da Lotofácil.")
                 else:
                     st.session_state.input_dezenas_digitadas_texto = " ".join([f"{n:02d}" for n in dezenas_limpas])
-                    # Gera com o modelo elástico calibrado
                     preset_extraido = extrair_filtros_de_jogo(dezenas_limpas, modo="elastico")
                     nome_salvar = nome_filtro_novo.strip() or "MEU_FILTRO_ELASTICO"
                     st.session_state.presets_filtros[nome_salvar] = preset_extraido
@@ -680,7 +674,6 @@ with tab_config:
                     st.success(f"Filtro elástico '{nome_salvar}' ativado com sucesso! As restrições foram abertas em faixas de 0 a X.")
                     st.rerun()
 
-    # GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL
     with st.container(border=True):
         st.markdown("#### 💾 GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL")
         col_puxar, col_gravar = st.columns(2)
