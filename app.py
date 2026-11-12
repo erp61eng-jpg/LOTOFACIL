@@ -149,7 +149,7 @@ OPCOES_QUANTIDADE = {
     "4 a 5": (4, 5)
 }
 
-# PRESET CALIBRAÇÃO EXATA DO SEU JOGO COM MARGEM AMPLIADA (+1 / -1)
+# PRESET CALIBRADO EXATAMENTE PARA O SEU JOGO COM FOLGA SEGURA
 PRESETS_PADRAO = {
     "JOGO_BASE_COM_FOLGA": {
         "linhas": ["2 a 5", "1 a 4", "1 a 5", "1 a 5", "1 a 5"],
@@ -235,7 +235,6 @@ def extrair_analise_elite(dados_calor):
     }
 
 def mapear_quantidade_para_rotulo_inteligente(qtd):
-    """Mapeia a quantidade exata e abre a margem em ±1 para dar folga segura."""
     min_v = max(0, qtd - 1)
     max_v = min(5, qtd + 1)
     for label, (low, high) in OPCOES_QUANTIDADE.items():
@@ -347,6 +346,23 @@ def processar_arquivo_upload(conteudo_bytes):
         else: invalidos += 1
     return jogos, invalidos
 
+def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
+    sorteio_set = set(dezenas_sorteadas)
+    placar = {15: [], 14: [], 13: [], 12: [], 11: [], 10: []}
+    relatorio = []
+    for idx, jogo in enumerate(lista_jogos):
+        acertos = sorted(list(set(jogo) & sorteio_set))
+        qtd = len(acertos)
+        if qtd in placar:
+            placar[qtd].append(idx + 1)
+        relatorio.append({
+            "num_aposta": idx + 1,
+            "jogo": sorted(jogo),
+            "qtd_acertos": qtd,
+            "acertos": acertos
+        })
+    return relatorio, placar
+
 def calcular_ciclo_lotofacil(historico):
     todas_25 = set(range(1, 26))
     if not historico:
@@ -455,8 +471,8 @@ tab_cartela, tab_config, tab_volante, tab_upload, tab_historico, tab_notas = st.
     "🎟️ Cartela & Seleção Elite",
     "🎛️ Filtros & Engenharia Reversa",
     "🗺️ Volante & Raio-X",
-    "📥 Upload & Filtragem Sucessiva",
-    "📊 Histórico, Caixa & Ciclo",
+    "📥 Upload & Conferência",
+    "📊 Histórico & Ciclo",
     "📝 Bloco de Notas"
 ])
 
@@ -526,7 +542,7 @@ with tab_config:
     
     with st.container(border=True):
         st.markdown("#### ⚡ ENGENHARIA REVERSA EXATA COM FOLGA SEGURA")
-        st.caption("Cole seu jogo base. O sistema vai extrair exatamente a estrutura dele (linhas, colunas, diagonais, primos, pares e soma) e abrir uma margem de segurança de ±1 ponto para gerar as apostas irmãs.")
+        st.caption("Cole seu jogo base. O sistema vai extrair a estrutura dele e abrir uma margem de segurança de ±1 ponto.")
         
         entrada_dezenas_filtro = st.text_area(
             "Cole seu jogo base aqui:",
@@ -634,21 +650,127 @@ with tab_volante:
         st.info("Gere apostas ou carregue um arquivo para inspecionar.")
 
 # ------------------------------------------------------------------------------
-# ABA 4: UPLOAD & CONFERÊNCIA
+# ABA 4: UPLOAD & CONFERÊNCIA (COMPLETA)
 # ------------------------------------------------------------------------------
 with tab_upload:
-    st.subheader("📥 UPLOAD & CONFERÊNCIA")
-    arquivo_enviado = st.file_uploader("Carregue seu arquivo (.txt ou .csv):", type=["txt", "csv"])
+    st.subheader("📥 UPLOAD, FILTRAGEM & CONFERÊNCIA DE RESULTADOS")
+    arquivo_enviado = st.file_uploader("Carregue seu arquivo de apostas (.txt ou .csv):", type=["txt", "csv"])
+
     if arquivo_enviado is not None:
         jogos_carregados, invalidos = processar_arquivo_upload(arquivo_enviado.read())
         st.session_state.jogos_upload = jogos_carregados
-        st.success(f"{len(jogos_carregados)} jogos carregados com sucesso!")
+        if invalidos > 0:
+            st.warning(f"⚠️ {invalidos} linha(s) ignoradas por formato inválido.")
 
     if st.session_state.jogos_upload:
-        if st.button("🔍 APLICAR FILTROS ATIVOS NO ARQUIVO", type="primary", use_container_width=True):
-            aprovados = [j for j in st.session_state.jogos_upload if validar_aposta_final_15(tuple(j), config_total)]
-            st.session_state.jogos_filtrados_upload = aprovados
-            st.markdown(f"<div class='progresso-gigante'>{len(aprovados):,} DE {len(st.session_state.jogos_upload):,} APROVADAS</div>", unsafe_allow_html=True)
+        jogos_up = st.session_state.jogos_upload
+        total_up = len(jogos_up)
+        st.markdown(f"<div class='progresso-gigante'>ARQUIVO CARREGADO: {total_up:,} APOSTAS EM MEMÓRIA</div>", unsafe_allow_html=True)
+
+        with st.container(border=True):
+            st.markdown("#### ⚡ FILTRAR ARQUIVO CARREGADO COM O FILTRO ATIVO")
+            c_flt1, c_flt2 = st.columns([2, 1])
+            with c_flt1:
+                if st.button("🔍 APLICAR FILTROS ATIVOS NO ARQUIVO", type="primary", use_container_width=True):
+                    with st.spinner("Filtrando apostas..."):
+                        aprovados_do_arquivo = [j for j in jogos_up if validar_aposta_final_15(tuple(j), config_total)]
+                        st.session_state.jogos_filtrados_upload = aprovados_do_arquivo
+                        st.markdown(f"<div class='progresso-gigante'>{len(aprovados_do_arquivo):,} DE {total_up:,} APROVADAS</div>", unsafe_allow_html=True)
+
+            if st.session_state.jogos_filtrados_upload:
+                qtd_flt = len(st.session_state.jogos_filtrados_upload)
+                txt_flt = "\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_filtrados_upload])
+                with c_flt2:
+                    st.download_button(f"💾 BAIXAR LOTE FILTRADO ({qtd_flt:,})", data=txt_flt, file_name=f"lotofacil_filtrado_{qtd_flt}j.txt", mime="text/plain", use_container_width=True)
+
+        st.divider()
+        col_diag_left, col_conf_right = st.columns([1.25, 1.0], gap="large")
+
+        with col_diag_left:
+            st.markdown("### 📊 DIAGNÓSTICO DO ARQUIVO")
+            cnt_nums = Counter()
+            somas = []
+            for j in jogos_up:
+                cnt_nums.update(j)
+                somas.append(sum(j))
+
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Total", f"{total_up:,}")
+            m2.metric("Soma Média", f"{sum(somas)/len(somas):.1f}" if somas else "0")
+            m3.metric("Mais Freq.", f"{cnt_nums.most_common(1)[0][0]:02d}" if cnt_nums else "--")
+
+            st.markdown("#### 🔥 FREQUÊNCIA NA MATRIZ (5x5)")
+            celulas_up_heat = ""
+            for r in range(5):
+                for c in range(5):
+                    n = r * 5 + c + 1
+                    freq = cnt_nums[n]
+                    bg = "#ffffff" if freq == 0 else "#fef08a"
+                    celulas_up_heat += f'<div style="width:50px;height:50px;background:{bg};color:#000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;border:2px solid #000000;box-sizing:border-box;"><span style="font-size:15px;font-weight:900;">{n:02d}</span><span style="font-size:12px;font-weight:900;">{freq}x</span></div>'
+
+            render_html_seguro(f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{{box-sizing:border-box;}}body{{margin:0;padding:0;background:transparent;display:flex;justify-content:center;font-family:Arial,sans-serif;}}.box{{background:#fff;border:4px solid #000000;border-radius:10px;padding:12px;width:fit-content;}}.grid{{display:grid;grid-template-columns:repeat(5,50px);gap:5px;}}</style></head><body><div class="box"><div class="grid">{celulas_up_heat}</div></div></body></html>', 320)
+
+        with col_conf_right:
+            st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS")
+            modo_origem = st.radio("Origem do Sorteio:", ["Último Sorteio Oficial", "Digitar Concurso Específico", "Digitar Dezenas Manualmente"], horizontal=True)
+            dezenas_conf = []
+
+            if modo_origem == "Último Sorteio Oficial":
+                dezenas_conf = sorted(st.session_state.historico[-1]) if st.session_state.historico else []
+            elif modo_origem == "Digitar Concurso Específico":
+                num_conc_busca = st.number_input("Digite o número do Concurso:", min_value=1, value=3000, step=1)
+                if st.button("🔍 Buscar Concurso na Caixa", use_container_width=True):
+                    with st.spinner(f"Consultando o concurso {num_conc_busca}..."):
+                        try:
+                            r_esp = requests.get(f"https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/{num_conc_busca}", headers=HEADERS_CAIXA, timeout=10, verify=False)
+                            if r_esp.status_code == 200:
+                                dados_esp = r_esp.json()
+                                dezenas_esp = sorted([int(x) for x in dados_esp.get("listaDezenas", [])])
+                                if len(dezenas_esp) == 15:
+                                    st.session_state["concurso_buscado_temp"] = dezenas_esp
+                                    st.success(f"Concurso #{num_conc_busca} carregado com sucesso!")
+                                else:
+                                    st.error("Erro ao ler as dezenas.")
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
+                dezenas_conf = st.session_state.get("concurso_buscado_temp", [])
+            else:
+                ult_def = st.session_state.historico[-1] if st.session_state.historico else [1, 2, 4, 7, 10, 11, 13, 14, 15, 17, 19, 20, 22, 23, 25]
+                entrada_manual = st.text_input("15 Dezenas Sorteadas (espaços):", value=" ".join([f"{n:02d}" for n in sorted(ult_def)]))
+                nums_man = [int(x) for x in re.findall(r"\b\d+\b", entrada_manual)]
+                dezenas_conf = sorted(list(set([n for n in nums_man if 1 <= n <= 25])))
+
+            if len(dezenas_conf) != 15:
+                st.warning("⚠️ Informe um concurso válido com 15 dezenas para iniciar a conferência.")
+            else:
+                render_cartao_sorteio_html(dezenas_conf, titulo="SORTEIO CONFERIDO")
+                base_conferir = st.session_state.jogos_filtrados_upload or jogos_up
+                relatorio_conf, placar_conf = conferir_apostas_contra_sorteio(base_conferir, dezenas_conf)
+
+                c15, c14, c13, c12, c11 = st.columns(5)
+                c15.metric("15 P", f"{len(placar_conf[15])}")
+                c14.metric("14 P", f"{len(placar_conf[14])}")
+                c13.metric("13 P", f"{len(placar_conf[13])}")
+                c12.metric("12 P", f"{len(placar_conf[12])}")
+                c11.metric("11 P", f"{len(placar_conf[11])}")
+
+                tot_prem = len(placar_conf[15]) + len(placar_conf[14]) + len(placar_conf[13]) + len(placar_conf[12]) + len(placar_conf[11])
+                if tot_prem > 0:
+                    st.markdown(f"<div class='progresso-gigante'>🎉 {tot_prem} APOSTA(S) PREMIADA(S) (11 a 15 PONTOS)!</div>", unsafe_allow_html=True)
+                    jogos_premiados_txt = "\n".join([f"{' '.join([f'{n:02d}' for n in it['jogo']])} | {it['qtd_acertos']} ACERTOS" for it in relatorio_conf if it["qtd_acertos"] >= 11])
+                    st.download_button("📥 BAIXAR APOSTAS PREMIADAS (.TXT)", data=jogos_premiados_txt, file_name=f"lotofacil_premiadas_{tot_prem}j.txt", mime="text/plain", use_container_width=True)
+                else:
+                    st.warning("Nenhuma aposta alcançou pontuação de 11 a 15 acertos.")
+
+                jogos_com_acerto = [it for it in relatorio_conf if it["qtd_acertos"] >= 11] or relatorio_conf
+                opcoes_map = {it["num_aposta"]: f"Aposta #{it['num_aposta']:04d} — {it['qtd_acertos']} acertos" for it in jogos_com_acerto[:50]}
+                if opcoes_map:
+                    idx_escolhido = st.selectbox("Inspecionar no Volante:", list(opcoes_map.keys()), format_func=lambda x: opcoes_map[x])
+                    if idx_escolhido is not None:
+                        item_ativo = next(it for it in relatorio_conf if "num_aposta" in it and it["num_aposta"] == idx_escolhido)
+                        render_volante_conferencia(item_ativo["jogo"], dezenas_conf, titulo=f"Aposta #{item_ativo['num_aposta']:04d} ({item_ativo['qtd_acertos']} Acertos)")
+    else:
+        st.info("Carregue um arquivo .txt ou .csv na aba superior para ativar o painel de conferência.")
 
 # ------------------------------------------------------------------------------
 # ABA 5: HISTÓRICO & CICLO
