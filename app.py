@@ -232,18 +232,19 @@ def extrair_analise_elite(dados_calor):
     }
 
 def mapear_quantidade_para_rotulo_amplo(qtd):
-    if qtd <= 0:
-        return "0 a 5"
-    elif qtd == 1:
-        return "1 a 5"
+    """
+    Gera faixas flexíveis seguras centradas na contagem exata (ex: se deu 4, gera '3 a 5').
+    """
+    if qtd <= 1:
+        return "0 a 3"
     elif qtd == 2:
-        return "2 a 5"
+        return "1 a 4"
     elif qtd == 3:
-        return "3 a 5"
+        return "2 a 4"
     elif qtd == 4:
-        return "4 a 5"
+        return "3 a 5"
     else:
-        return "Livre (0 a 5)"
+        return "3 a 5"
 
 def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
     if flexivel:
@@ -332,6 +333,11 @@ def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
     }
 
 def validar_aposta_final_15(jogo, cfg):
+    """
+    VALIDADOR BLINDADO: Verifica se a contagem real de cada linha, coluna 
+    e diagonal está perfeitamente inserida dentro do intervalo inclusivo [min, max]
+    configurado nos seletores.
+    """
     soma_j = sum(jogo)
     if not (cfg["faixa_soma"][0] <= soma_j <= cfg["faixa_soma"][1]): return False
     if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg["pares_aceitos"]: return False
@@ -346,13 +352,20 @@ def validar_aposta_final_15(jogo, cfg):
         c_cnt[COL_LOOKUP[n]] += 1
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
+
+    # Validação estricta dos intervalos (min <= contagem <= max)
     for r in range(5):
-        if not (cfg["linhas"][r][0] <= l_cnt[r] <= cfg["linhas"][r][1]): return False
+        min_l, max_l = cfg["linhas"][r]
+        if not (min_l <= l_cnt[r] <= max_l): return False
     for c in range(5):
-        if not (cfg["colunas"][c][0] <= c_cnt[c] <= cfg["colunas"][c][1]): return False
+        min_c, max_c = cfg["colunas"][c]
+        if not (min_c <= c_cnt[c] <= max_c): return False
     for d in range(5):
-        if not (cfg["diag_cresc"][d][0] <= dc_cnt[d] <= cfg["diag_cresc"][d][1]): return False
-        if not (cfg["diag_decresc"][d][0] <= dd_cnt[d] <= cfg["diag_decresc"][d][1]): return False
+        min_dc, max_dc = cfg["diag_cresc"][d]
+        if not (min_dc <= dc_cnt[d] <= max_dc): return False
+        min_dd, max_dd = cfg["diag_decresc"][d]
+        if not (min_dd <= dd_cnt[d] <= max_dd): return False
+        
     return True
 
 def executar_varredura_pool(pool_dezenas, cfg, bar_progresso, ticker_metricas, teto_max=None):
@@ -474,7 +487,6 @@ if "jogos_filtrados_upload" not in st.session_state: st.session_state.jogos_filt
 if "presets_filtros" not in st.session_state:
     st.session_state.presets_filtros = carregar_presets_persistidos()
 
-# BLINDAGEM: Garante que o texto digitado do cartão de referência não seja apagado ao mexer em sliders/intervalos
 if "input_dezenas_digitadas_texto" not in st.session_state:
     st.session_state.input_dezenas_digitadas_texto = "01 02 04 05 06 10 11 13 15 16 18 20 21 22 23"
 
@@ -663,7 +675,6 @@ with tab_config:
             st.markdown("#### ⚡ ENGENHARIA REVERSA POR DEZENAS DIGITADAS (FAIXAS ABERTAS)")
             st.caption("Gera faixas flexíveis abertas para cima (ex: 2 a 5) em linhas, colunas e diagonais, gerando um volume saudável e evitando engessamento em 1 único jogo.")
             
-            # BLINDAGEM: O text_area lê e escreve diretamente na st.session_state para não apagar ao mexer em sliders
             entrada_dezenas_filtro = st.text_area(
                 "Dezenas do Cartão de Referência (15 a 25 números):",
                 value=st.session_state.input_dezenas_digitadas_texto,
@@ -821,7 +832,6 @@ with tab_config:
     if st.session_state.jogos_aprovados:
         qtd_gerada = len(st.session_state.jogos_aprovados)
         st.markdown(f"<div class='progresso-gigante'>TOTAL APROVADO: {qtd_gerada:,} APOSTAS</div>", unsafe_allow_html=True)
-        # NOME DINÂMICO COM A QUANTIDADE DE CARTELAS NO FINAL (EX: lotofacil_apostas_filtradas_150j.txt)
         nome_arquivo_txt = f"lotofacil_apostas_filtradas_{qtd_gerada}j.txt"
         st.download_button("📥 BAIXAR JOGOS APROVADOS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_aprovados]), file_name=nome_arquivo_txt, mime="text/plain", use_container_width=True)
 
