@@ -149,7 +149,6 @@ OPCOES_QUANTIDADE = {
     "4 a 5": (4, 5)
 }
 
-# PRESET CALIBRADO COM FOLGA PARA O JOGO BASE
 PRESETS_PADRAO = {
     "MEU_JOGO_BASE_FLEXIVEL": {
         "linhas": ["2 a 5", "1 a 4", "1 a 5", "1 a 5", "1 a 5"],
@@ -343,23 +342,6 @@ def processar_arquivo_upload(conteudo_bytes):
         else: invalidos += 1
     return jogos, invalidos
 
-def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
-    sorteio_set = set(dezenas_sorteadas)
-    placar = {15: [], 14: [], 13: [], 12: [], 11: [], 10: []}
-    relatorio = []
-    for idx, jogo in enumerate(lista_jogos):
-        acertos = sorted(list(set(jogo) & sorteio_set))
-        qtd = len(acertos)
-        if qtd in placar:
-            placar[qtd].append(idx + 1)
-        relatorio.append({
-            "num_aposta": idx + 1,
-            "jogo": sorted(jogo),
-            "qtd_acertos": qtd,
-            "acertos": acertos
-        })
-    return relatorio, placar
-
 def calcular_ciclo_lotofacil(historico):
     todas_25 = set(range(1, 26))
     if not historico:
@@ -382,10 +364,6 @@ def render_html_seguro(conteudo_html, altura=380):
         else: components.html(conteudo_html, height=altura, scrolling=False)
     except Exception:
         components.html(conteudo_html, height=altura, scrolling=False)
-
-def render_cartao_sorteio_html(dezenas, titulo="CARTÃO OFICIAL DO SORTEIO"):
-    bolas_html = "".join([f"<span style='display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#facc15;color:#000000;font-weight:900;font-size:22px;border-radius:50%;margin:0 4px;border:3px solid #000000;font-family:monospace;'>{n:02d}</span>" for n in dezenas])
-    st.markdown(f'''<div style="background:#ffffff;border:4px solid #000000;border-radius:12px;padding:14px;margin:8px 0;text-align:center;"><div style="font-weight:900;color:#000000;font-size:18px;margin-bottom:8px;text-transform:uppercase;">🏆 {titulo}</div><div style="display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px;">{bolas_html}</div></div>''', unsafe_allow_html=True)
 
 def render_volante_conferencia(jogo, dezenas_sorteio, titulo=""):
     jogo_set, sorteio_set = set(jogo), set(dezenas_sorteio)
@@ -563,7 +541,7 @@ with tab_config:
         )
         st.session_state.input_dezenas_digitadas_texto = entrada_dezenas_filtro
 
-        if st.button("⚡ EXTRAIR FAIXAS ABERTAS E ATIVAR FILTRO", type="primary", use_keyword=True, use_container_width=True):
+        if st.button("⚡ EXTRAIR FAIXAS ABERTAS E ATIVAR FILTRO", type="primary", use_container_width=True):
             nums_parse = [int(x) for x in re.findall(r"\b\d+\b", entrada_dezenas_filtro)]
             dezenas_limpas = sorted(list(set([n for n in nums_parse if 1 <= n <= 25])))
             if len(dezenas_limpas) < 15: 
