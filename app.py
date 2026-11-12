@@ -149,7 +149,6 @@ OPCOES_QUANTIDADE = {
     "4 a 5": (4, 5)
 }
 
-# PRESET CALIBRADO EXATAMENTE PARA O SEU JOGO COM FOLGA SEGURA
 PRESETS_PADRAO = {
     "JOGO_BASE_COM_FOLGA": {
         "linhas": ["2 a 5", "1 a 4", "1 a 5", "1 a 5", "1 a 5"],
@@ -418,6 +417,7 @@ if "historico" not in st.session_state:
 if "jogos_aprovados" not in st.session_state: st.session_state.jogos_aprovados = []
 if "jogos_upload" not in st.session_state: st.session_state.jogos_upload = []
 if "jogos_filtrados_upload" not in st.session_state: st.session_state.jogos_filtrados_upload = []
+if "nome_arquivo_carregado" not in st.session_state: st.session_state.nome_arquivo_carregado = ""
 
 if "presets_filtros" not in st.session_state:
     st.session_state.presets_filtros = carregar_presets_persistidos()
@@ -650,22 +650,29 @@ with tab_volante:
         st.info("Gere apostas ou carregue um arquivo para inspecionar.")
 
 # ------------------------------------------------------------------------------
-# ABA 4: UPLOAD & CONFERÊNCIA (COMPLETA)
+# ABA 4: UPLOAD & CONFERÊNCIA (COM PERSISTÊNCIA BLINDADA)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.subheader("📥 UPLOAD, FILTRAGEM & CONFERÊNCIA DE RESULTADOS")
+    
     arquivo_enviado = st.file_uploader("Carregue seu arquivo de apostas (.txt ou .csv):", type=["txt", "csv"])
 
     if arquivo_enviado is not None:
-        jogos_carregados, invalidos = processar_arquivo_upload(arquivo_enviado.read())
-        st.session_state.jogos_upload = jogos_carregados
-        if invalidos > 0:
-            st.warning(f"⚠️ {invalidos} linha(s) ignoradas por formato inválido.")
+        # Verifica se é um arquivo novo para evitar reprocessar à toa
+        if arquivo_enviado.name != st.session_state.get("nome_arquivo_carregado", ""):
+            conteudo = arquivo_enviado.read()
+            jogos_carregados, invalidos = processar_arquivo_upload(conteudo)
+            st.session_state.jogos_upload = jogos_carregados
+            st.session_state.nome_arquivo_carregado = arquivo_enviado.name
+            st.session_state.jogos_filtrados_upload = [] # Reseta o filtro do lote anterior
+            if invalidos > 0:
+                st.warning(f"⚠️ {invalidos} linha(s) ignoradas por formato inválido.")
+            st.success(f"Arquivo '{arquivo_enviado.name}' carregado e salvo na memória com sucesso!")
 
     if st.session_state.jogos_upload:
         jogos_up = st.session_state.jogos_upload
         total_up = len(jogos_up)
-        st.markdown(f"<div class='progresso-gigante'>ARQUIVO CARREGADO: {total_up:,} APOSTAS EM MEMÓRIA</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='progresso-gigante'>ARQUIVO EM MEMÓRIA: {total_up:,} APOSTAS (Salvo no Estado)</div>", unsafe_allow_html=True)
 
         with st.container(border=True):
             st.markdown("#### ⚡ FILTRAR ARQUIVO CARREGADO COM O FILTRO ATIVO")
@@ -770,7 +777,7 @@ with tab_upload:
                         item_ativo = next(it for it in relatorio_conf if "num_aposta" in it and it["num_aposta"] == idx_escolhido)
                         render_volante_conferencia(item_ativo["jogo"], dezenas_conf, titulo=f"Aposta #{item_ativo['num_aposta']:04d} ({item_ativo['qtd_acertos']} Acertos)")
     else:
-        st.info("Carregue um arquivo .txt ou .csv na aba superior para ativar o painel de conferência.")
+        st.info("Carregue um arquivo .txt ou .csv na parte superior para ativar o painel de conferência. Seus arquivos carregados ficarão salvos na memória.")
 
 # ------------------------------------------------------------------------------
 # ABA 5: HISTÓRICO & CICLO
