@@ -231,9 +231,6 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-# ==============================================================================
-# MAPEAMENTO ABERTO (AMPLA VARIEDADE DE RAMEAMENTO: DE X ATÉ 5)
-# ==============================================================================
 def mapear_quantidade_para_rotulo_amplo(qtd):
     if qtd <= 0:
         return "0 a 5"
@@ -256,9 +253,6 @@ def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
         if low == min_v and high == max_v: return label
     return "Livre (0 a 5)"
 
-# ==============================================================================
-# ENGENHARIA REVERSA COM FAIXAS ABERTAS
-# ==============================================================================
 def extrair_filtros_de_jogo(dezenas, margem_soma=35):
     dezenas = sorted(list(set(dezenas)))
     total_dezenas = len(dezenas)
@@ -466,7 +460,7 @@ def render_volante_conferencia(jogo, dezenas_sorteio, titulo=""):
 
 
 # ==============================================================================
-# 🛠️ ETAPA 2: ESTADO DA SESSÃO
+# 🛠️ ETAPA 2: ESTADO DA SESSÃO & BLINDAGEM DE DADOS
 # ==============================================================================
 
 if "historico" not in st.session_state:
@@ -479,6 +473,10 @@ if "jogos_filtrados_upload" not in st.session_state: st.session_state.jogos_filt
 
 if "presets_filtros" not in st.session_state:
     st.session_state.presets_filtros = carregar_presets_persistidos()
+
+# BLINDAGEM: Garante que o texto digitado do cartão de referência não seja apagado ao mexer em sliders/intervalos
+if "input_dezenas_digitadas_texto" not in st.session_state:
+    st.session_state.input_dezenas_digitadas_texto = "01 02 04 05 06 10 11 13 15 16 18 20 21 22 23"
 
 dados_calor = calcular_metricas_elliott(st.session_state.historico)
 ranking_elliott = sorted(dados_calor.values(), key=lambda x: x["score"], reverse=True)
@@ -664,11 +662,20 @@ with tab_config:
         with st.container(border=True):
             st.markdown("#### ⚡ ENGENHARIA REVERSA POR DEZENAS DIGITADAS (FAIXAS ABERTAS)")
             st.caption("Gera faixas flexíveis abertas para cima (ex: 2 a 5) em linhas, colunas e diagonais, gerando um volume saudável e evitando engessamento em 1 único jogo.")
-            if "input_dezenas_digitadas_texto" not in st.session_state: st.session_state.input_dezenas_digitadas_texto = "01 02 04 05 06 10 11 13 15 16 18 20 21 22 23"
+            
+            # BLINDAGEM: O text_area lê e escreve diretamente na st.session_state para não apagar ao mexer em sliders
+            entrada_dezenas_filtro = st.text_area(
+                "Dezenas do Cartão de Referência (15 a 25 números):",
+                value=st.session_state.input_dezenas_digitadas_texto,
+                height=80,
+                key="input_dezenas_digitadas_widget"
+            )
+            st.session_state.input_dezenas_digitadas_texto = entrada_dezenas_filtro
+
             col_input_res, col_input_nome = st.columns([2.5, 1.8])
-            with col_input_res: entrada_dezenas_filtro = st.text_area("Dezenas do Cartão de Referência (15 a 25 números):", value=st.session_state.input_dezenas_digitadas_texto, height=80)
-            with col_input_nome:
+            with col_input_res:
                 nome_filtro_novo = st.text_input("Nome do Filtro:", value="MEU_FILTRO_FLEXIVEL")
+            with col_input_nome:
                 substituir_pool_opcao = st.checkbox("Substituir o Pool da Cartela com estas Dezenas", value=True)
 
             if st.button("⚡ EXTRAIR RESTRIÇÕES ABERTAS E ATIVAR FILTRO", type="primary", use_container_width=True):
@@ -812,8 +819,11 @@ with tab_config:
             else: st.warning("⚠️ Nenhuma combinação atendeu aos filtros selecionados.")
 
     if st.session_state.jogos_aprovados:
-        st.markdown(f"<div class='progresso-gigante'>TOTAL APROVADO: {len(st.session_state.jogos_aprovados):,} APOSTAS</div>", unsafe_allow_html=True)
-        st.download_button("📥 BAIXAR JOGOS APROVADOS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_apostas_filtradas.txt", mime="text/plain", use_container_width=True)
+        qtd_gerada = len(st.session_state.jogos_aprovados)
+        st.markdown(f"<div class='progresso-gigante'>TOTAL APROVADO: {qtd_gerada:,} APOSTAS</div>", unsafe_allow_html=True)
+        # NOME DINÂMICO COM A QUANTIDADE DE CARTELAS NO FINAL (EX: lotofacil_apostas_filtradas_150j.txt)
+        nome_arquivo_txt = f"lotofacil_apostas_filtradas_{qtd_gerada}j.txt"
+        st.download_button("📥 BAIXAR JOGOS APROVADOS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_aprovados]), file_name=nome_arquivo_txt, mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
 # ABA 3: VOLANTE VISUAL & RAIO-X
@@ -864,8 +874,9 @@ with tab_upload:
             if st.session_state.jogos_filtrados_upload:
                 qtd_flt = len(st.session_state.jogos_filtrados_upload)
                 txt_flt = "\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_filtrados_upload])
+                nome_arquivo_filtrado = f"lotofacil_lote_filtrado_{qtd_flt}j.txt"
                 with c_flt2:
-                    st.download_button(f"💾 BAIXAR LOTE FILTRADO ({qtd_flt:,})", data=txt_flt, file_name="lotofacil_lote_filtrado.txt", mime="text/plain", use_container_width=True)
+                    st.download_button(f"💾 BAIXAR LOTE FILTRADO ({qtd_flt:,})", data=txt_flt, file_name=nome_arquivo_filtrado, mime="text/plain", use_container_width=True)
 
         st.divider()
         col_diag_left, col_conf_right = st.columns([1.25, 1.0], gap="large")
@@ -944,7 +955,8 @@ with tab_upload:
                 if tot_prem > 0:
                     st.markdown(f"<div class='progresso-gigante'>🎉 {tot_prem} APOSTA(S) PREMIADA(S) (11 a 15 PONTOS)!</div>", unsafe_allow_html=True)
                     jogos_premiados_txt = "\n".join([f"{' '.join([f'{n:02d}' for n in it['jogo']])} | {it['qtd_acertos']} ACERTOS" for it in relatorio_conf if it["qtd_acertos"] >= 11])
-                    st.download_button("📥 BAIXAR APOSTAS PREMIADAS (11+ PONTOS) (.TXT)", data=jogos_premiados_txt, file_name="lotofacil_premiadas_11_15.txt", mime="text/plain", use_container_width=True)
+                    nome_arquivo_premiadas = f"lotofacil_premiadas_{tot_prem}j.txt"
+                    st.download_button("📥 BAIXAR APOSTAS PREMIADAS (11+ PONTOS) (.TXT)", data=jogos_premiados_txt, file_name=nome_arquivo_premiadas, mime="text/plain", use_container_width=True)
                 else:
                     st.warning("Nenhuma aposta alcançou pontuação de 11 a 15 acertos.")
 
@@ -953,7 +965,7 @@ with tab_upload:
                 if opcoes_map:
                     idx_escolhido = st.selectbox("Inspecionar no Volante:", list(opcoes_map.keys()), format_func=lambda x: opcoes_map[x])
                     if idx_escolhido is not None:
-                        item_ativo = next(it for it in relatorio_conf if it["num_aposta"] == idx_escolh_id if "num_aposta" in it and it["num_aposta"] == idx_escolhido)
+                        item_ativo = next(it for it in relatorio_conf if "num_aposta" in it and it["num_aposta"] == idx_escolhido)
                         render_volante_conferencia(item_ativo["jogo"], dezenas_conf, titulo=f"Aposta #{item_ativo['num_aposta']:04d} ({item_ativo['qtd_acertos']} Acertos)")
     else:
         st.info("Carregue um arquivo .txt ou .csv na parte superior para ativar o painel de conferência.")
