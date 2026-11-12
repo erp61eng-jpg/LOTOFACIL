@@ -259,7 +259,7 @@ def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
 # ==============================================================================
 # ENGENHARIA REVERSA COM FAIXAS ABERTAS
 # ==============================================================================
-def extrair_filtros_de_jogo(dezenas, margem_soma=25):
+def extrair_filtros_de_jogo(dezenas, margem_soma=35):
     dezenas = sorted(list(set(dezenas)))
     total_dezenas = len(dezenas)
     if not (15 <= total_dezenas <= 25): 
@@ -272,19 +272,19 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=25):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    pares_calibrados = ["6P / 9I", "7P / 8I", "8P / 7I", "9P / 6I", "10P / 5I"]
+    pares_calibrados = ["5P / 10I", "6P / 9I", "7P / 8I", "8P / 7I", "9P / 6I", "10P / 5I"]
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
-    primos_calibrados = sorted(list(range(max(2, primos_total - 2), min(8, primos_total + 3))))
+    primos_calibrados = sorted(list(range(max(2, primos_total - 2), min(9, primos_total + 3))))
 
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
-    moldura_calibrada = sorted(list(range(max(7, moldura_total - 2), min(13, moldura_total + 3))))
+    moldura_calibrada = sorted(list(range(max(6, moldura_total - 3), min(14, moldura_total + 4))))
 
     cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
-    cruz_calibrada = sorted(list(range(max(3, cruz_total - 2), min(8, cruz_total + 3))))
+    cruz_calibrada = sorted(list(range(max(2, cruz_total - 2), min(9, cruz_total + 3))))
 
     soma_total = sum(dezenas[:15]) if total_dezenas > 15 else sum(dezenas)
-    faixa_soma_min = max(150, soma_total - margem_soma)
-    faixa_soma_max = min(240, soma_total + margem_soma)
+    faixa_soma_min = max(140, soma_total - margem_soma)
+    faixa_soma_max = min(250, soma_total + margem_soma)
 
     return {
         "linhas": [mapear_quantidade_para_rotulo_amplo(q) for q in l_cnt],
@@ -953,7 +953,7 @@ with tab_upload:
                 if opcoes_map:
                     idx_escolhido = st.selectbox("Inspecionar no Volante:", list(opcoes_map.keys()), format_func=lambda x: opcoes_map[x])
                     if idx_escolhido is not None:
-                        item_ativo = next(it for it in relatorio_conf if it["num_aposta"] == idx_escolhido)
+                        item_ativo = next(it for it in relatorio_conf if it["num_aposta"] == idx_escolh_id if "num_aposta" in it and it["num_aposta"] == idx_escolhido)
                         render_volante_conferencia(item_ativo["jogo"], dezenas_conf, titulo=f"Aposta #{item_ativo['num_aposta']:04d} ({item_ativo['qtd_acertos']} Acertos)")
     else:
         st.info("Carregue um arquivo .txt ou .csv na parte superior para ativar o painel de conferência.")
