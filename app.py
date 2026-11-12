@@ -231,18 +231,19 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-def mapear_quantidade_para_rotulo_amplo(qtd):
+def mapear_quantidade_para_rotulo_inteligente(qtd):
     """
-    Gera faixas flexíveis seguras centradas na contagem exata (ex: se deu 4, gera '3 a 5').
+    Constrói um envelope flexível baseado na contagem exata (qtd) encontrada na linha/coluna,
+    permitindo uma margem segura de variação para englobar variações naturais sem engessar.
     """
     if qtd <= 1:
         return "0 a 3"
     elif qtd == 2:
         return "1 a 4"
     elif qtd == 3:
-        return "2 a 4"
+        return "1 a 4"
     elif qtd == 4:
-        return "3 a 5"
+        return "2 a 5"
     else:
         return "3 a 5"
 
@@ -282,10 +283,10 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=35):
     faixa_soma_max = min(250, soma_total + margem_soma)
 
     return {
-        "linhas": [mapear_quantidade_para_rotulo_amplo(q) for q in l_cnt],
-        "colunas": [mapear_quantidade_para_rotulo_amplo(q) for q in c_cnt],
-        "diag_cresc": [mapear_quantidade_para_rotulo_amplo(q) for q in dc_cnt],
-        "diag_decresc": [mapear_quantidade_para_rotulo_amplo(q) for q in dd_cnt],
+        "linhas": [mapear_quantidade_para_rotulo_inteligente(q) for q in l_cnt],
+        "colunas": [mapear_quantidade_para_rotulo_inteligente(q) for q in c_cnt],
+        "diag_cresc": [mapear_quantidade_para_rotulo_inteligente(q) for q in dc_cnt],
+        "diag_decresc": [mapear_quantidade_para_rotulo_inteligente(q) for q in dd_cnt],
         "primos": primos_calibrados,
         "pares": pares_calibrados,
         "moldura": moldura_calibrada,
@@ -334,9 +335,8 @@ def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
 
 def validar_aposta_final_15(jogo, cfg):
     """
-    VALIDADOR BLINDADO: Verifica se a contagem real de cada linha, coluna 
-    e diagonal está perfeitamente inserida dentro do intervalo inclusivo [min, max]
-    configurado nos seletores.
+    VALIDADOR BLINDADO: Verifica estritamente se a contagem real de dezenas 
+    em cada linha, coluna e diagonal está dentro dos limites [min, max] definidos.
     """
     soma_j = sum(jogo)
     if not (cfg["faixa_soma"][0] <= soma_j <= cfg["faixa_soma"][1]): return False
@@ -353,7 +353,7 @@ def validar_aposta_final_15(jogo, cfg):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # Validação estricta dos intervalos (min <= contagem <= max)
+    # Validação rigorosa dos intervalos inclusivos [min, max]
     for r in range(5):
         min_l, max_l = cfg["linhas"][r]
         if not (min_l <= l_cnt[r] <= max_l): return False
