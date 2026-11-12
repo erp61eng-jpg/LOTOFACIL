@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (FORÇANDO TEMA CLARO / ALTO CONTRASTE PRETO E AMARELO)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE PRETO E BRANCO)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -235,10 +235,6 @@ def extrair_analise_elite(dados_calor):
 # MAPEAMENTO ABERTO (AMPLA VARIEDADE DE RAMEAMENTO: DE X ATÉ 5)
 # ==============================================================================
 def mapear_quantidade_para_rotulo_amplo(qtd):
-    """
-    Gera faixas amplas abertas para cima (de X a 5) conforme solicitado pelo usuário,
-    evitando totalmente o engessamento em um único número exato.
-    """
     if qtd <= 0:
         return "0 a 5"
     elif qtd == 1:
@@ -276,23 +272,16 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=25):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # Calibrador de Pares Aberto
-    pares_total = sum(1 for n in dezenas if PAR_LOOKUP[n])
     pares_calibrados = ["6P / 9I", "7P / 8I", "8P / 7I", "9P / 6I", "10P / 5I"]
-
-    # Calibrador de Primos Aberto (Janela segura ampla)
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
     primos_calibrados = sorted(list(range(max(2, primos_total - 2), min(8, primos_total + 3))))
 
-    # Calibrador de Moldura (Faixa ampla 7 a 12)
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
     moldura_calibrada = sorted(list(range(max(7, moldura_total - 2), min(13, moldura_total + 3))))
 
-    # Calibrador da Cruz Central
     cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
     cruz_calibrada = sorted(list(range(max(3, cruz_total - 2), min(8, cruz_total + 3))))
 
-    # Faixa de Soma Ampla
     soma_total = sum(dezenas[:15]) if total_dezenas > 15 else sum(dezenas)
     faixa_soma_min = max(150, soma_total - margem_soma)
     faixa_soma_max = min(240, soma_total + margem_soma)
@@ -576,12 +565,18 @@ with tab_cartela:
                 st.rerun()
         with c_act2:
             if st.button("🎛️ GERAR E ATIVAR FILTRO COM ESTAS CONDICIONANTES", use_container_width=True):
-                with st.spinner("Processando e gravando filtro de elite..."):
-                    preset_elite = extrair_filtros_de_jogo(pool_elite_ordenado)
-                    st.session_state.presets_filtros["FILTRO_ELITE_CONDICIONANTES"] = preset_elite
-                    salvar_presets_persistidos(st.session_state.presets_filtros)
-                    aplicar_preset("FILTRO_ELITE_CONDICIONANTES")
-                    time.sleep(0.3)
+                bar_status = st.progress(0, text="Iniciando processamento do filtro de elite...")
+                time.sleep(0.3)
+                bar_status.progress(40, text="Extraindo faixas abertas e gravando arquivo JSON...")
+                preset_elite = extrair_filtros_de_jogo(pool_elite_ordenado)
+                st.session_state.presets_filtros["FILTRO_ELITE_CONDICIONANTES"] = preset_elite
+                salvar_presets_persistidos(st.session_state.presets_filtros)
+                bar_status.progress(80, text="Aplicando predefinição na interface...")
+                aplicar_preset("FILTRO_ELITE_CONDICIONANTES")
+                time.sleep(0.3)
+                bar_status.progress(100, text="Concluído com sucesso!")
+                time.sleep(0.2)
+                bar_status.empty()
                 st.success("✅ Filtro de elite ativado e gravado com sucesso na Aba 2!")
                 st.rerun()
 
@@ -648,23 +643,28 @@ with tab_config:
             with col_m3: tolerancia_multi = st.selectbox("Margem:", ["Envelope Preciso", "Envelope Flexível"], index=0)
 
             if st.button("🚀 PROCESSAR CONCURSOS E ATIVAR FILTRO", type="primary", use_container_width=True):
-                with st.spinner("⏳ Processando histórico e gravando filtro multiconcursos..."):
-                    sorteios_alvo = st.session_state.historico[-qtd_concursos_sel:]
-                    preset_multi = extrair_filtros_multiconcursos(sorteios_alvo, modo="preciso" if "Preciso" in tolerancia_multi else "flexivel")
-                    nome_salvar = nome_filtro_multi.strip() or f"FILTRO_ULT_{qtd_concursos_sel}_CONCURSOS"
-                    st.session_state.presets_filtros[nome_salvar] = preset_multi
-                    salvar_presets_persistidos(st.session_state.presets_filtros)
-                    aplicar_preset(nome_salvar)
-                    dezenas_unicas = sorted(list({n for j in sorteios_alvo for n in j}))
-                    if carregar_pool_multi: st.session_state.pool_trabalho = set(dezenas_unicas)
-                    time.sleep(0.3)
+                bar_m = st.progress(0, text="Acessando histórico de concursos...")
+                time.sleep(0.2)
+                bar_m.progress(35, text="Calculando limites estatísticos multiconcursos...")
+                sorteios_alvo = st.session_state.historico[-qtd_concursos_sel:]
+                preset_multi = extrair_filtros_multiconcursos(sorteios_alvo, modo="preciso" if "Preciso" in tolerancia_multi else "flexivel")
+                bar_m.progress(70, text="Gravando predefinição no arquivo JSON...")
+                nome_salvar = nome_filtro_multi.strip() or f"FILTRO_ULT_{qtd_concursos_sel}_CONCURSOS"
+                st.session_state.presets_filtros[nome_salvar] = preset_multi
+                salvar_presets_persistidos(st.session_state.presets_filtros)
+                aplicar_preset(nome_salvar)
+                dezenas_unicas = sorted(list({n for j in sorteios_alvo for n in j}))
+                if carregar_pool_multi: st.session_state.pool_trabalho = set(dezenas_unicas)
+                bar_m.progress(100, text="Concluído com sucesso!")
+                time.sleep(0.3)
+                bar_m.empty()
                 st.success(f"✅ Filtro '{nome_salvar}' processado, ativado e gravado com sucesso!")
                 st.rerun()
     else:
         with st.container(border=True):
             st.markdown("#### ⚡ ENGENHARIA REVERSA POR DEZENAS DIGITADAS (FAIXAS ABERTAS)")
             st.caption("Gera faixas flexíveis abertas para cima (ex: 2 a 5) em linhas, colunas e diagonais, gerando um volume saudável e evitando engessamento em 1 único jogo.")
-            if "input_dezenas_digitadas_texto" not in st.session_state: st.session_state.input_dezenas_digitadas_texto = "01 03 05 11 12 13 14 15 17 19 21 22 23 24 25"
+            if "input_dezenas_digitadas_texto" not in st.session_state: st.session_state.input_dezenas_digitadas_texto = "01 02 04 05 06 10 11 13 15 16 18 20 21 22 23"
             col_input_res, col_input_nome = st.columns([2.5, 1.8])
             with col_input_res: entrada_dezenas_filtro = st.text_area("Dezenas do Cartão de Referência (15 a 25 números):", value=st.session_state.input_dezenas_digitadas_texto, height=80)
             with col_input_nome:
@@ -675,21 +675,26 @@ with tab_config:
                 nums_parse = [int(x) for x in re.findall(r"\b\d+\b", entrada_dezenas_filtro)]
                 dezenas_limpas = sorted(list(set([n for n in nums_parse if 1 <= n <= 25])))
                 if len(dezenas_limpas) < 15: 
-                    st.error("Informe pelo menos 15 dezenas válidas da Lotofácil.")
+                    st.error("⚠️ Informe pelo menos 15 dezenas válidas da Lotofácil.")
                 else:
-                    with st.spinner("⏳ Analisando dezenas, extraindo faixas abertas e gravando no disco..."):
-                        st.session_state.input_dezenas_digitadas_texto = " ".join([f"{n:02d}" for n in dezenas_limpas])
-                        preset_extraido = extrair_filtros_de_jogo(dezenas_limpas)
-                        nome_salvar = nome_filtro_novo.strip() or "MEU_FILTRO_FLEXIVEL"
-                        st.session_state.presets_filtros[nome_salvar] = preset_extraido
-                        salvar_presets_persistidos(st.session_state.presets_filtros)
-                        aplicar_preset(nome_salvar)
-                        if substituir_pool_opcao: st.session_state.pool_trabalho = set(dezenas_limpas)
-                        time.sleep(0.3)
+                    bar_e = st.progress(0, text="Limpando e validando dezenas digitadas...")
+                    time.sleep(0.2)
+                    bar_e.progress(40, text="Mapeando faixas abertas e calibradores estatísticos...")
+                    st.session_state.input_dezenas_digitadas_texto = " ".join([f"{n:02d}" for n in dezenas_limpas])
+                    preset_extraido = extrair_filtros_de_jogo(dezenas_limpas)
+                    bar_e.progress(75, text="Gravando predefinição no arquivo JSON local...")
+                    nome_salvar = nome_filtro_novo.strip() or "MEU_FILTRO_FLEXIVEL"
+                    st.session_state.presets_filtros[nome_salvar] = preset_extraido
+                    salvar_presets_persistidos(st.session_state.presets_filtros)
+                    aplicar_preset(nome_salvar)
+                    if substituir_pool_opcao: st.session_state.pool_trabalho = set(dezenas_limpas)
+                    bar_e.progress(100, text="Processo concluído!")
+                    time.sleep(0.3)
+                    bar_e.empty()
                     st.success(f"✅ Filtro flexível '{nome_salvar}' gerado, gravado e ativado com sucesso!")
                     st.rerun()
 
-    # GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL COM FEEDBACK VISUAL CLARO
+    # GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL COM BARRA DE SERVIÇO EXPLICITA
     with st.container(border=True):
         st.markdown("#### 💾 GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL")
         col_puxar, col_gravar = st.columns(2)
@@ -699,9 +704,12 @@ with tab_config:
             c_pux1, c_pux2 = st.columns(2)
             with c_pux1:
                 if st.button("🚀 APLICAR PREDEFINIÇÃO", use_container_width=True):
-                    with st.spinner("Carregando predefinição..."):
-                        aplicar_preset(filtro_escolhido)
-                        time.sleep(0.2)
+                    bar_p = st.progress(0, text="Carregando predefinição...")
+                    time.sleep(0.2)
+                    aplicar_preset(filtro_escolhido)
+                    bar_p.progress(100, text="Aplicado com sucesso!")
+                    time.sleep(0.2)
+                    bar_p.empty()
                     st.success(f"✅ Filtro '{filtro_escolhido}' carregado com sucesso!")
                     st.rerun()
             with c_pux2:
@@ -713,22 +721,26 @@ with tab_config:
                 if not nome_novo_filtro.strip():
                     st.error("⚠️ Informe um nome para a predefinição antes de gravar.")
                 else:
-                    with st.spinner("⏳ Gravando configuração no arquivo local..."):
-                        novo_preset = {
-                            "linhas": [st.session_state.get(f"sel_l_{r}", "Exatamente 3 (03)") for r in range(5)],
-                            "colunas": [st.session_state.get(f"sel_c_{c}", "Exatamente 3 (03)") for c in range(5)],
-                            "diag_cresc": [st.session_state.get(f"sel_dc_{d}", "1 a 3") for d in range(5)],
-                            "diag_decresc": [st.session_state.get(f"sel_dd_{d}", "1 a 3") for d in range(5)],
-                            "primos": st.session_state.get("sel_primos", [5]),
-                            "pares": st.session_state.get("sel_pares", ["8P / 7I"]),
-                            "moldura": st.session_state.get("sel_moldura", [9]),
-                            "cruz": st.session_state.get("sel_cruz", [4, 5, 6]),
-                            "soma": (int(st.session_state.get("sel_soma", (150, 240))[0]), int(st.session_state.get("sel_soma", (150, 240))[1]))
-                        }
-                        st.session_state.presets_filtros[nome_novo_filtro.strip()] = novo_preset
-                        salvar_presets_persistidos(st.session_state.presets_filtros)
-                        time.sleep(0.3)
-                    st.success(f"✅ Predefinição '{nome_novo_filtro.strip()}' gravada e persistida com sucesso no disco!")
+                    bar_grav = st.progress(0, text="Iniciando gravação no disco...")
+                    time.sleep(0.2)
+                    bar_grav.progress(50, text="Salvando JSON de predefinições...")
+                    novo_preset = {
+                        "linhas": [st.session_state.get(f"sel_l_{r}", "Exatamente 3 (03)") for r in range(5)],
+                        "colunas": [st.session_state.get(f"sel_c_{c}", "Exatamente 3 (03)") for c in range(5)],
+                        "diag_cresc": [st.session_state.get(f"sel_dc_{d}", "1 a 3") for d in range(5)],
+                        "diag_decresc": [st.session_state.get(f"sel_dd_{d}", "1 a 3") for d in range(5)],
+                        "primos": st.session_state.get("sel_primos", [5]),
+                        "pares": st.session_state.get("sel_pares", ["8P / 7I"]),
+                        "moldura": st.session_state.get("sel_moldura", [9]),
+                        "cruz": st.session_state.get("sel_cruz", [4, 5, 6]),
+                        "soma": (int(st.session_state.get("sel_soma", (150, 240))[0]), int(st.session_state.get("sel_soma", (150, 240))[1]))
+                    }
+                    st.session_state.presets_filtros[nome_novo_filtro.strip()] = novo_preset
+                    salvar_presets_persistidos(st.session_state.presets_filtros)
+                    bar_grav.progress(100, text="Gravação concluída com sucesso!")
+                    time.sleep(0.3)
+                    bar_grav.empty()
+                    st.success(f"✅ Predefinição '{nome_novo_filtro.strip()}' gravada e persistida com sucesso no disco (`{ARQUIVO_PRESETS_LOCAL}`)!")
                     st.rerun()
 
     st.divider()
@@ -984,7 +996,7 @@ with tab_historico:
         st.markdown("#### ✅ Dezenas que já saíram no ciclo:")
         ja_deram_str = " • ".join([f"{n:02d}" for n in ciclo_dados['ja_deram']]) if ciclo_dados['ja_deram'] else "Nenhuma dezena registrada"
         st.markdown(f"<div style='background:#facc15;color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.3rem;font-weight:900;'>{ja_deram_str}</div>", unsafe_allow_html=True)
-        st.markdown(f"**Total já sorteadas:** `{len(cicload_dados['ja_deram'] if 'cicload_dados' in locals() else ciclo_dados['ja_deram'])} / 25`")
+        st.markdown(f"**Total já sorteadas:** `{len(ciclo_dados['ja_deram'])} / 25`")
 
     with col_c2:
         st.markdown("#### ⏳ Dezenas que FALTAM (Ausentes no ciclo):")
@@ -1018,9 +1030,12 @@ with tab_notas:
     c_n1, c_n2 = st.columns(2)
     with c_n1:
         if st.button("💾 FORÇAR GRAVAÇÃO", use_container_width=True, type="primary"):
-            with st.spinner("⏳ Gravando notas no arquivo local..."):
-                salvar_notas_automaticamente(novas_notas)
-                time.sleep(0.2)
+            bar_nota = st.progress(0, text="Salvando notas no disco...")
+            time.sleep(0.2)
+            salvar_notas_automaticamente(novas_notas)
+            bar_nota.progress(100, text="Notas salvas com sucesso!")
+            time.sleep(0.3)
+            bar_nota.empty()
             st.success("✅ Anotações gravadas com sucesso no arquivo `meu_bloco_de_notas.txt`!")
     with c_n2:
         st.download_button(
