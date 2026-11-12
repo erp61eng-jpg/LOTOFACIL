@@ -149,17 +149,18 @@ OPCOES_QUANTIDADE = {
     "4 a 5": (4, 5)
 }
 
+# PRESET CALIBRAÇÃO EXATA DO SEU JOGO COM MARGEM AMPLIADA (+1 / -1)
 PRESETS_PADRAO = {
-    "MEU_JOGO_BASE_FLEXIVEL": {
+    "JOGO_BASE_COM_FOLGA": {
         "linhas": ["2 a 5", "1 a 4", "1 a 5", "1 a 5", "1 a 5"],
         "colunas": ["3 a 5", "1 a 4", "1 a 5", "0 a 3", "2 a 5"],
-        "diag_cresc": ["2 a 5", "2 a 5", "0 a 4", "0 a 4", "1 a 5"],
-        "diag_decresc": ["0 a 4", "1 a 5", "1 a 5", "2 a 5", "1 a 5"],
+        "diag_cresc": ["1 a 5", "1 a 5", "0 a 4", "0 a 4", "1 a 5"],
+        "diag_decresc": ["0 a 4", "1 a 5", "1 a 5", "1 a 5", "1 a 5"],
         "primos": [3, 4, 5, 6, 7],
         "pares": ["7P / 8I", "8P / 7I", "9P / 6I"],
         "moldura": [11, 12, 13, 14, 15],
         "cruz": [3, 4, 5, 6, 7],
-        "soma": (165, 225)
+        "soma": (160, 230)
     }
 }
 
@@ -234,11 +235,13 @@ def extrair_analise_elite(dados_calor):
     }
 
 def mapear_quantidade_para_rotulo_inteligente(qtd):
-    if qtd <= 1: return "0 a 3"
-    elif qtd == 2: return "1 a 4"
-    elif qtd == 3: return "1 a 4"
-    elif qtd == 4: return "2 a 5"
-    else: return "3 a 5"
+    """Mapeia a quantidade exata e abre a margem em ±1 para dar folga segura."""
+    min_v = max(0, qtd - 1)
+    max_v = min(5, qtd + 1)
+    for label, (low, high) in OPCOES_QUANTIDADE.items():
+        if low == min_v and high == max_v:
+            return label
+    return "1 a 4"
 
 def extrair_filtros_de_jogo(dezenas, margem_soma=35):
     dezenas = sorted(list(set(dezenas)))
@@ -252,12 +255,14 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=35):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    pares_calibrados = ["7P / 8I", "8P / 7I", "9P / 6I"]
+    pares_jogo = sum(1 for n in dezenas if PAR_LOOKUP[n])
+    pares_calibrados = sorted(list({f"{p}P / {15-p}I" for p in range(max(5, pares_jogo-1), min(11, pares_jogo+2))}))
+    
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
-    primos_calibrados = sorted(list(range(max(2, primos_total - 2), min(9, primos_total + 3))))
+    primos_calibrados = sorted(list(range(max(2, primos_total - 1), min(9, primos_total + 2))))
 
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
-    moldura_calibrada = sorted(list(range(max(10, moldura_total - 2), min(16, moldura_total + 3))))
+    moldura_calibrada = sorted(list(range(max(8, moldura_total - 2), min(16, moldura_total + 3))))
 
     cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
     cruz_calibrada = sorted(list(range(max(2, cruz_total - 2), min(9, cruz_total + 3))))
@@ -365,6 +370,10 @@ def render_html_seguro(conteudo_html, altura=380):
     except Exception:
         components.html(conteudo_html, height=altura, scrolling=False)
 
+def render_cartao_sorteio_html(dezenas, titulo="CARTÃO OFICIAL DO SORTEIO"):
+    bolas_html = "".join([f"<span style='display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#facc15;color:#000000;font-weight:900;font-size:22px;border-radius:50%;margin:0 4px;border:3px solid #000000;font-family:monospace;'>{n:02d}</span>" for n in dezenas])
+    st.markdown(f'''<div style="background:#ffffff;border:4px solid #000000;border-radius:12px;padding:14px;margin:8px 0;text-align:center;"><div style="font-weight:900;color:#000000;font-size:18px;margin-bottom:8px;text-transform:uppercase;">🏆 {titulo}</div><div style="display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px;">{bolas_html}</div></div>''', unsafe_allow_html=True)
+
 def render_volante_conferencia(jogo, dezenas_sorteio, titulo=""):
     jogo_set, sorteio_set = set(jogo), set(dezenas_sorteio)
     celulas = ""
@@ -421,11 +430,11 @@ def aplicar_preset(nome_preset):
     st.session_state["sel_pares"] = cfg_p["pares"]
     st.session_state["sel_moldura"] = cfg_p["moldura"]
     st.session_state["sel_cruz"] = cfg_p.get("cruz", [3, 4, 5, 6, 7])
-    soma_raw = cfg_p.get("soma", (165, 225))
+    soma_raw = cfg_p.get("soma", (160, 230))
     st.session_state["sel_soma"] = (int(soma_raw[0]), int(soma_raw[1]))
 
 if "filtro_inicial_carregado" not in st.session_state:
-    aplicar_preset("MEU_JOGO_BASE_FLEXIVEL")
+    aplicar_preset("JOGO_BASE_COM_FOLGA")
     st.session_state.filtro_inicial_carregado = True
 
 def toggle_dezena(n):
@@ -474,22 +483,6 @@ with tab_cartela:
             dd_badges = "".join([f"<span style='display:inline-block;background:#fef08a;color:#000000;font-weight:900;padding:3px 8px;margin:2px 3px;border:2px solid #000000;border-radius:4px;font-size:1.1rem;'>DD{d+1:02d}</span>" for d in analise_elite["dd"]])
             st.markdown(f"<div style='margin-bottom:4px;'><b>CRESC:</b> {dc_badges}</div><div><b>DECRESC:</b> {dd_badges}</div>", unsafe_allow_html=True)
 
-        st.divider()
-        pool_elite_ordenado = analise_elite["pool_elite"]
-        st.markdown(f"<div style='font-size:1.5rem;color:#000000;font-weight:900;'>🎯 POOL CONSOLIDADO DAS ELITES ({len(pool_elite_ordenado)} DEZENAS):<br><span style='background:#facc15;padding:8px 16px;border:3px solid #000000;border-radius:8px;display:inline-block;margin-top:8px;font-size:1.4rem;'>{' - '.join([f'{n:02d}' for n in pool_elite_ordenado])}</span></div>", unsafe_allow_html=True)
-
-        if st.button("🎛️ GERAR E ATIVAR FILTRO COM ESTAS CONDICIONANTES", use_container_width=True):
-            bar_status = st.progress(0, text="Processando filtro...")
-            preset_elite = extrair_filtros_de_jogo(pool_elite_ordenado)
-            st.session_state.presets_filtros["FILTRO_ELITE_CONDICIONANTES"] = preset_elite
-            salvar_presets_persistidos(st.session_state.presets_filtros)
-            aplicar_preset("FILTRO_ELITE_CONDICIONANTES")
-            bar_status.progress(100, text="Pronto!")
-            time.sleep(0.2)
-            bar_status.empty()
-            st.success("✅ Filtro de elite ativado!")
-            st.rerun()
-
     st.subheader("🎟️ CARTELA DE 25 NÚMEROS (MATRIZ 5x5)")
     c_b1, c_b2, c_b3, c_b4, c_b5 = st.columns(5)
     with c_b1:
@@ -532,7 +525,9 @@ with tab_config:
     st.markdown("### 🎛️ FILTROS ESTRUTURAIS & DIAGONAIS")
     
     with st.container(border=True):
-        st.markdown("#### ⚡ ENGENHARIA REVERSA PELO SEU JOGO BASE")
+        st.markdown("#### ⚡ ENGENHARIA REVERSA EXATA COM FOLGA SEGURA")
+        st.caption("Cole seu jogo base. O sistema vai extrair exatamente a estrutura dele (linhas, colunas, diagonais, primos, pares e soma) e abrir uma margem de segurança de ±1 ponto para gerar as apostas irmãs.")
+        
         entrada_dezenas_filtro = st.text_area(
             "Cole seu jogo base aqui:",
             value=st.session_state.input_dezenas_digitadas_texto,
@@ -541,28 +536,19 @@ with tab_config:
         )
         st.session_state.input_dezenas_digitadas_texto = entrada_dezenas_filtro
 
-        if st.button("⚡ EXTRAIR FAIXAS ABERTAS E ATIVAR FILTRO", type="primary", use_container_width=True):
+        if st.button("⚡ EXTRAIR E CALIBRAR FILTRO COM FOLGA", type="primary", use_container_width=True):
             nums_parse = [int(x) for x in re.findall(r"\b\d+\b", entrada_dezenas_filtro)]
             dezenas_limpas = sorted(list(set([n for n in nums_parse if 1 <= n <= 25])))
             if len(dezenas_limpas) < 15: 
                 st.error("⚠️ Informe pelo menos 15 dezenas válidas.")
             else:
                 preset_extraido = extrair_filtros_de_jogo(dezenas_limpas)
-                st.session_state.presets_filtros["MEU_JOGO_BASE_FLEXIVEL"] = preset_extraido
+                st.session_state.presets_filtros["JOGO_BASE_COM_FOLGA"] = preset_extraido
                 salvar_presets_persistidos(st.session_state.presets_filtros)
-                aplicar_preset("MEU_JOGO_BASE_FLEXIVEL")
+                aplicar_preset("JOGO_BASE_COM_FOLGA")
                 st.session_state.pool_trabalho = set(dezenas_limpas)
-                st.success("✅ Filtro extraído com sucesso e aplicado!")
+                st.success("✅ Filtro extraído, calibrado e ativado com sucesso!")
                 st.rerun()
-
-    with st.container(border=True):
-        st.markdown("#### 💾 GERENCIADOR DE PREDEFINIÇÕES")
-        lista_nomes = list(st.session_state.presets_filtros.keys())
-        filtro_escolhido = st.selectbox("Carregar Filtro Salvo:", lista_nomes, key="select_preset_load")
-        if st.button("🚀 APLICAR PREDEFINIÇÃO SELECIONADA", use_container_width=True):
-            aplicar_preset(filtro_escolhido)
-            st.success(f"✅ Filtro '{filtro_escolhido}' carregado com sucesso!")
-            st.rerun()
 
     st.divider()
     opcoes_nomes = list(OPCOES_QUANTIDADE.keys())
@@ -604,15 +590,15 @@ with tab_config:
     with st.container(border=True):
         st.markdown("#### 5️⃣ RESTRIÇÕES CALIBRADORAS")
         c_p1, c_p2, c_p3, c_p4, c_p5 = st.columns(5)
-        with c_p1: primos_sel = st.multiselect("Primos:", list(range(10)), default=st.session_state.get("sel_primos", [3, 4, 5, 6, 7]), key="sel_primos")
+        with c_p1: primos_sel = st.multiselect("Primos:", list(range(10)), default=st.session_state.get("sel_primos", [3, 4, 5, 6]), key="sel_primos")
         with c_p2:
             opcoes_par = {"8P / 7I": 8, "7P / 8I": 7, "9P / 6I": 9}
             par_sel = st.multiselect("Pares/Ímpares:", list(opcoes_par.keys()), default=st.session_state.get("sel_pares", ["7P / 8I", "8P / 7I", "9P / 6I"]), key="sel_pares")
             pares_valores = {opcoes_par[k] for k in par_sel}
         with c_p3: moldura_sel = st.multiselect("Moldura:", list(range(16)), default=st.session_state.get("sel_moldura", [11, 12, 13, 14, 15]), key="sel_moldura")
-        with c_p4: cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [3, 4, 5, 6, 7]), key="sel_cruz")
+        with c_p4: cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [3, 4, 5, 6]), key="sel_cruz")
         with c_p5:
-            val_soma_estado = st.session_state.get("sel_soma", (165, 225))
+            val_soma_estado = st.session_state.get("sel_soma", (160, 230))
             faixa_soma = st.slider("Faixa de Soma:", 100, 300, (int(val_soma_estado[0]), int(val_soma_estado[1])), key="sel_soma")
 
     config_total = {
