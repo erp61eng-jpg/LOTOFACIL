@@ -24,7 +24,6 @@ st.set_page_config(
 # ESTILIZAÇÃO CSS GLOBAL (FORÇANDO TEMA CLARO / ALTO CONTRASTE PRETO E AMARELO)
 st.markdown('''
 <style>
-    /* Força fundo branco e texto preto em toda a aplicação */
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
         background-color: #ffffff !important;
         color: #000000 !important;
@@ -37,7 +36,6 @@ st.markdown('''
     }
     h1, h2, h3, h4 { color: #000000 !important; font-weight: 900 !important; }
     
-    /* Estilização de Containers / Cards */
     [data-testid="stVerticalBlock"] > div[style*="border"] {
         background-color: #f8fafc !important;
         border: 3px solid #000000 !important;
@@ -145,9 +143,12 @@ for n in range(1, 26):
 
 OPCOES_QUANTIDADE = {
     "Livre (0 a 5)": (0, 5), "0 (Nenhuma)": (0, 0), "Exatamente 1 (01)": (1, 1),
-    "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "0 a 2": (0, 2),
-    "0 a 3": (0, 3), "0 a 4": (0, 4), "1 a 3": (1, 3), "2 a 3": (2, 3),
-    "Exatamente 4": (4, 4), "Exatamente 5": (5, 5)
+    "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "Exatamente 4": (4, 4), "Exatamente 5": (5, 5),
+    "0 a 2": (0, 2), "0 a 3": (0, 3), "0 a 4": (0, 4), "0 a 5": (0, 5),
+    "1 a 3": (1, 3), "1 a 4": (1, 4), "1 a 5": (1, 5),
+    "2 a 3": (2, 3), "2 a 4": (2, 4), "2 a 5": (2, 5),
+    "3 a 4": (3, 4), "3 a 5": (3, 5),
+    "4 a 5": (4, 5)
 }
 
 PRESETS_PADRAO = {
@@ -230,21 +231,26 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-def mapear_quantidade_para_rotulo(qtd, modo="elastico"):
-    if modo == "exato":
-        mapa_exato = {
-            0: "0 (Nenhuma)", 1: "Exatamente 1 (01)", 2: "Exatamente 2 (02)",
-            3: "Exatamente 3 (03)", 4: "Exatamente 4", 5: "Exatamente 5"
-        }
-        return mapa_exato.get(qtd, "Livre (0 a 5)")
-
-    if qtd == 0: return "0 a 2"
-    elif qtd == 1: return "0 a 3"
-    elif qtd == 2: return "0 a 3"
-    elif qtd == 3: return "1 a 3"
-    elif qtd == 4: return "0 a 4"
-    elif qtd >= 5: return "Livre (0 a 5)"
-    return "Livre (0 a 5)"
+# ==============================================================================
+# MAPEAMENTO ABERTO (AMPLA VARIEDADE DE RAMEAMENTO: DE X ATÉ 5)
+# ==============================================================================
+def mapear_quantidade_para_rotulo_amplo(qtd):
+    """
+    Gera faixas amplas abertas para cima (de X a 5) conforme solicitado pelo usuário,
+    evitando totalmente o engessamento em um único número exato.
+    """
+    if qtd <= 0:
+        return "0 a 5"
+    elif qtd == 1:
+        return "1 a 5"
+    elif qtd == 2:
+        return "2 a 5"
+    elif qtd == 3:
+        return "3 a 5"
+    elif qtd == 4:
+        return "4 a 5"
+    else:
+        return "Livre (0 a 5)"
 
 def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
     if flexivel:
@@ -254,7 +260,10 @@ def mapear_intervalo_para_opcao(min_v, max_v, flexivel=False):
         if low == min_v and high == max_v: return label
     return "Livre (0 a 5)"
 
-def extrair_filtros_de_jogo(dezenas, modo="elastico", margem_soma=20):
+# ==============================================================================
+# ENGENHARIA REVERSA COM FAIXAS ABERTAS
+# ==============================================================================
+def extrair_filtros_de_jogo(dezenas, margem_soma=25):
     dezenas = sorted(list(set(dezenas)))
     total_dezenas = len(dezenas)
     if not (15 <= total_dezenas <= 25): 
@@ -267,32 +276,32 @@ def extrair_filtros_de_jogo(dezenas, modo="elastico", margem_soma=20):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
+    # Calibrador de Pares Aberto
     pares_total = sum(1 for n in dezenas if PAR_LOOKUP[n])
-    if pares_total in [7, 8]:
-        pares_calibrados = ["7P / 8I", "8P / 7I"]
-    elif pares_total <= 6:
-        pares_calibrados = ["6P / 9I", "7P / 8I"]
-    else:
-        pares_calibrados = ["8P / 7I", "9P / 6I"]
+    pares_calibrados = ["6P / 9I", "7P / 8I", "8P / 7I", "9P / 6I", "10P / 5I"]
 
+    # Calibrador de Primos Aberto (Janela segura ampla)
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
-    primos_calibrados = sorted(list({max(3, primos_total - 1), primos_total, min(7, primos_total + 1)}))
+    primos_calibrados = sorted(list(range(max(2, primos_total - 2), min(8, primos_total + 3))))
 
+    # Calibrador de Moldura (Faixa ampla 7 a 12)
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
-    moldura_calibrada = sorted(list({max(8, moldura_total - 1), moldura_total, min(11, moldura_total + 1)}))
+    moldura_calibrada = sorted(list(range(max(7, moldura_total - 2), min(13, moldura_total + 3))))
 
+    # Calibrador da Cruz Central
     cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
-    cruz_calibrada = sorted(list({max(4, cruz_total - 1), cruz_total, min(7, cruz_total + 1)}))
+    cruz_calibrada = sorted(list(range(max(3, cruz_total - 2), min(8, cruz_total + 3))))
 
+    # Faixa de Soma Ampla
     soma_total = sum(dezenas[:15]) if total_dezenas > 15 else sum(dezenas)
-    faixa_soma_min = max(165, soma_total - margem_soma)
-    faixa_soma_max = min(225, soma_total + margem_soma)
+    faixa_soma_min = max(150, soma_total - margem_soma)
+    faixa_soma_max = min(240, soma_total + margem_soma)
 
     return {
-        "linhas": [mapear_quantidade_para_rotulo(q, modo) for q in l_cnt],
-        "colunas": [mapear_quantidade_para_rotulo(q, modo) for q in c_cnt],
-        "diag_cresc": [mapear_quantidade_para_rotulo(q, modo) for q in dc_cnt],
-        "diag_decresc": [mapear_quantidade_para_rotulo(q, modo) for q in dd_cnt],
+        "linhas": [mapear_quantidade_para_rotulo_amplo(q) for q in l_cnt],
+        "colunas": [mapear_quantidade_para_rotulo_amplo(q) for q in c_cnt],
+        "diag_cresc": [mapear_quantidade_para_rotulo_amplo(q) for q in dc_cnt],
+        "diag_decresc": [mapear_quantidade_para_rotulo_amplo(q) for q in dd_cnt],
         "primos": primos_calibrados,
         "pares": pares_calibrados,
         "moldura": moldura_calibrada,
@@ -336,7 +345,7 @@ def extrair_filtros_multiconcursos(lista_sorteios, modo="preciso"):
         "diag_decresc": [mapear_intervalo_para_opcao(min_dd[d], max_dd[d], is_flex) for d in range(5)],
         "primos": sorted(list(conjunto_primos)), "pares": sorted(list(conjunto_pares)),
         "moldura": sorted(list(conjunto_moldura)), "cruz": sorted(list(conjunto_cruz)),
-        "soma": (max(100, min(somas_obs)-15), min(300, max(somas_obs)+15))
+        "soma": (max(100, min(somas_obs)-20), min(300, max(somas_obs)+20))
     }
 
 def validar_aposta_final_15(jogo, cfg):
@@ -502,8 +511,8 @@ def aplicar_preset(nome_preset):
     st.session_state["sel_primos"] = cfg_p["primos"]
     st.session_state["sel_pares"] = cfg_p["pares"]
     st.session_state["sel_moldura"] = cfg_p["moldura"]
-    st.session_state["sel_cruz"] = cfg_p.get("cruz", [4, 5, 6])
-    soma_raw = cfg_p.get("soma", (165, 225))
+    st.session_state["sel_cruz"] = cfg_p.get("cruz", [3, 4, 5, 6, 7])
+    soma_raw = cfg_p.get("soma", (150, 240))
     st.session_state["sel_soma"] = (int(soma_raw[0]), int(soma_raw[1]))
 
 if "filtro_inicial_carregado" not in st.session_state:
@@ -567,11 +576,13 @@ with tab_cartela:
                 st.rerun()
         with c_act2:
             if st.button("🎛️ GERAR E ATIVAR FILTRO COM ESTAS CONDICIONANTES", use_container_width=True):
-                preset_elite = extrair_filtros_de_jogo(pool_elite_ordenado, modo="elastico")
-                st.session_state.presets_filtros["FILTRO_ELITE_CONDICIONANTES"] = preset_elite
-                salvar_presets_persistidos(st.session_state.presets_filtros)
-                aplicar_preset("FILTRO_ELITE_CONDICIONANTES")
-                st.success("Filtro ativado e salvo com sucesso na Aba 2!")
+                with st.spinner("Processando e gravando filtro de elite..."):
+                    preset_elite = extrair_filtros_de_jogo(pool_elite_ordenado)
+                    st.session_state.presets_filtros["FILTRO_ELITE_CONDICIONANTES"] = preset_elite
+                    salvar_presets_persistidos(st.session_state.presets_filtros)
+                    aplicar_preset("FILTRO_ELITE_CONDICIONANTES")
+                    time.sleep(0.3)
+                st.success("✅ Filtro de elite ativado e gravado com sucesso na Aba 2!")
                 st.rerun()
 
     st.subheader("🎟️ CARTELA DE 25 NÚMEROS (MATRIZ 5x5)")
@@ -623,7 +634,7 @@ with tab_cartela:
 # ------------------------------------------------------------------------------
 with tab_config:
     st.markdown("### 🎛️ FILTROS ESTRUTURAIS & ENGENHARIA REVERSA")
-    tipo_reverso = st.radio("Selecione a Rotina de Engenharia Reversa:", ["🏛️ Rotina 1: Histórica Multiconcursos", "⚡ Rotina 2: Dezenas Digitadas a Mão (Filtro Elástico)"], horizontal=True)
+    tipo_reverso = st.radio("Selecione a Rotina de Engenharia Reversa:", ["🏛️ Rotina 1: Histórica Multiconcursos", "⚡ Rotina 2: Dezenas Digitadas a Mão (Filtro Amplo Aberto)"], horizontal=True)
 
     if tipo_reverso.startswith("🏛️ Rotina 1"):
         with st.container(border=True):
@@ -637,43 +648,48 @@ with tab_config:
             with col_m3: tolerancia_multi = st.selectbox("Margem:", ["Envelope Preciso", "Envelope Flexível"], index=0)
 
             if st.button("🚀 PROCESSAR CONCURSOS E ATIVAR FILTRO", type="primary", use_container_width=True):
-                sorteios_alvo = st.session_state.historico[-qtd_concursos_sel:]
-                preset_multi = extrair_filtros_multiconcursos(sorteios_alvo, modo="preciso" if "Preciso" in tolerancia_multi else "flexivel")
-                nome_salvar = nome_filtro_multi.strip() or f"FILTRO_ULT_{qtd_concursos_sel}_CONCURSOS"
-                st.session_state.presets_filtros[nome_salvar] = preset_multi
-                salvar_presets_persistidos(st.session_state.presets_filtros)
-                aplicar_preset(nome_salvar)
-                dezenas_unicas = sorted(list({n for j in sorteios_alvo for n in j}))
-                if carregar_pool_multi: st.session_state.pool_trabalho = set(dezenas_unicas)
-                st.success(f"Filtro '{nome_salvar}' ativado e salvo permanentemente!")
+                with st.spinner("⏳ Processando histórico e gravando filtro multiconcursos..."):
+                    sorteios_alvo = st.session_state.historico[-qtd_concursos_sel:]
+                    preset_multi = extrair_filtros_multiconcursos(sorteios_alvo, modo="preciso" if "Preciso" in tolerancia_multi else "flexivel")
+                    nome_salvar = nome_filtro_multi.strip() or f"FILTRO_ULT_{qtd_concursos_sel}_CONCURSOS"
+                    st.session_state.presets_filtros[nome_salvar] = preset_multi
+                    salvar_presets_persistidos(st.session_state.presets_filtros)
+                    aplicar_preset(nome_salvar)
+                    dezenas_unicas = sorted(list({n for j in sorteios_alvo for n in j}))
+                    if carregar_pool_multi: st.session_state.pool_trabalho = set(dezenas_unicas)
+                    time.sleep(0.3)
+                st.success(f"✅ Filtro '{nome_salvar}' processado, ativado e gravado com sucesso!")
                 st.rerun()
     else:
         with st.container(border=True):
-            st.markdown("#### ⚡ ENGENHARIA REVERSA POR DEZENAS DIGITADAS (SEM ENGESSAR)")
-            st.caption("Quando uma linha der 4 vira '0 a 4', se der 2 vira '0 a 3', equilibrando o volume com filtros de Pares, Primos e Moldura.")
+            st.markdown("#### ⚡ ENGENHARIA REVERSA POR DEZENAS DIGITADAS (FAIXAS ABERTAS)")
+            st.caption("Gera faixas flexíveis abertas para cima (ex: 2 a 5) em linhas, colunas e diagonais, gerando um volume saudável e evitando engessamento em 1 único jogo.")
             if "input_dezenas_digitadas_texto" not in st.session_state: st.session_state.input_dezenas_digitadas_texto = "01 03 05 11 12 13 14 15 17 19 21 22 23 24 25"
             col_input_res, col_input_nome = st.columns([2.5, 1.8])
             with col_input_res: entrada_dezenas_filtro = st.text_area("Dezenas do Cartão de Referência (15 a 25 números):", value=st.session_state.input_dezenas_digitadas_texto, height=80)
             with col_input_nome:
-                nome_filtro_novo = st.text_input("Nome do Filtro:", value="MEU_FILTRO_ELASTICO")
+                nome_filtro_novo = st.text_input("Nome do Filtro:", value="MEU_FILTRO_FLEXIVEL")
                 substituir_pool_opcao = st.checkbox("Substituir o Pool da Cartela com estas Dezenas", value=True)
 
-            if st.button("⚡ EXTRAIR RESTRIÇÕES ELÁSTICAS E ATIVAR FILTRO", type="primary", use_container_width=True):
+            if st.button("⚡ EXTRAIR RESTRIÇÕES ABERTAS E ATIVAR FILTRO", type="primary", use_container_width=True):
                 nums_parse = [int(x) for x in re.findall(r"\b\d+\b", entrada_dezenas_filtro)]
                 dezenas_limpas = sorted(list(set([n for n in nums_parse if 1 <= n <= 25])))
                 if len(dezenas_limpas) < 15: 
                     st.error("Informe pelo menos 15 dezenas válidas da Lotofácil.")
                 else:
-                    st.session_state.input_dezenas_digitadas_texto = " ".join([f"{n:02d}" for n in dezenas_limpas])
-                    preset_extraido = extrair_filtros_de_jogo(dezenas_limpas, modo="elastico")
-                    nome_salvar = nome_filtro_novo.strip() or "MEU_FILTRO_ELASTICO"
-                    st.session_state.presets_filtros[nome_salvar] = preset_extraido
-                    salvar_presets_persistidos(st.session_state.presets_filtros)
-                    aplicar_preset(nome_salvar)
-                    if substituir_pool_opcao: st.session_state.pool_trabalho = set(dezenas_limpas)
-                    st.success(f"Filtro elástico '{nome_salvar}' ativado com sucesso! As restrições foram abertas em faixas de 0 a X.")
+                    with st.spinner("⏳ Analisando dezenas, extraindo faixas abertas e gravando no disco..."):
+                        st.session_state.input_dezenas_digitadas_texto = " ".join([f"{n:02d}" for n in dezenas_limpas])
+                        preset_extraido = extrair_filtros_de_jogo(dezenas_limpas)
+                        nome_salvar = nome_filtro_novo.strip() or "MEU_FILTRO_FLEXIVEL"
+                        st.session_state.presets_filtros[nome_salvar] = preset_extraido
+                        salvar_presets_persistidos(st.session_state.presets_filtros)
+                        aplicar_preset(nome_salvar)
+                        if substituir_pool_opcao: st.session_state.pool_trabalho = set(dezenas_limpas)
+                        time.sleep(0.3)
+                    st.success(f"✅ Filtro flexível '{nome_salvar}' gerado, gravado e ativado com sucesso!")
                     st.rerun()
 
+    # GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL COM FEEDBACK VISUAL CLARO
     with st.container(border=True):
         st.markdown("#### 💾 GERENCIADOR DE PREDEFINIÇÕES & GRAVAÇÃO MANUAL")
         col_puxar, col_gravar = st.columns(2)
@@ -683,8 +699,10 @@ with tab_config:
             c_pux1, c_pux2 = st.columns(2)
             with c_pux1:
                 if st.button("🚀 APLICAR PREDEFINIÇÃO", use_container_width=True):
-                    aplicar_preset(filtro_escolhido)
-                    st.success(f"Filtro '{filtro_escolhido}' carregado com sucesso!")
+                    with st.spinner("Carregando predefinição..."):
+                        aplicar_preset(filtro_escolhido)
+                        time.sleep(0.2)
+                    st.success(f"✅ Filtro '{filtro_escolhido}' carregado com sucesso!")
                     st.rerun()
             with c_pux2:
                 st.download_button("💾 BAIXAR (.JSON)", data=json.dumps(st.session_state.presets_filtros, indent=2, ensure_ascii=False), file_name="meus_filtros_lotofacil.json", mime="application/json", use_container_width=True)
@@ -692,29 +710,32 @@ with tab_config:
         with col_gravar:
             nome_novo_filtro = st.text_input("Nome da Nova Configuração:", placeholder="Ex: Meu Filtro Top", key="input_nome_filtro_manual")
             if st.button("💾 GRAVAR CONFIGURAÇÃO MANUAL", use_container_width=True, type="primary"):
-                if not nome_novo_filtro.strip(): st.error("Informe um nome para a predefinição.")
+                if not nome_novo_filtro.strip():
+                    st.error("⚠️ Informe um nome para a predefinição antes de gravar.")
                 else:
-                    novo_preset = {
-                        "linhas": [st.session_state.get(f"sel_l_{r}", "Exatamente 3 (03)") for r in range(5)],
-                        "colunas": [st.session_state.get(f"sel_c_{c}", "Exatamente 3 (03)") for c in range(5)],
-                        "diag_cresc": [st.session_state.get(f"sel_dc_{d}", "1 a 3") for d in range(5)],
-                        "diag_decresc": [st.session_state.get(f"sel_dd_{d}", "1 a 3") for d in range(5)],
-                        "primos": st.session_state.get("sel_primos", [5]),
-                        "pares": st.session_state.get("sel_pares", ["8P / 7I"]),
-                        "moldura": st.session_state.get("sel_moldura", [9]),
-                        "cruz": st.session_state.get("sel_cruz", [4, 5, 6]),
-                        "soma": (int(st.session_state.get("sel_soma", (165, 225))[0]), int(st.session_state.get("sel_soma", (165, 225))[1]))
-                    }
-                    st.session_state.presets_filtros[nome_novo_filtro.strip()] = novo_preset
-                    salvar_presets_persistidos(st.session_state.presets_filtros)
-                    st.success(f"Predefinição '{nome_novo_filtro.strip()}' gravada e persistida com sucesso!")
+                    with st.spinner("⏳ Gravando configuração no arquivo local..."):
+                        novo_preset = {
+                            "linhas": [st.session_state.get(f"sel_l_{r}", "Exatamente 3 (03)") for r in range(5)],
+                            "colunas": [st.session_state.get(f"sel_c_{c}", "Exatamente 3 (03)") for c in range(5)],
+                            "diag_cresc": [st.session_state.get(f"sel_dc_{d}", "1 a 3") for d in range(5)],
+                            "diag_decresc": [st.session_state.get(f"sel_dd_{d}", "1 a 3") for d in range(5)],
+                            "primos": st.session_state.get("sel_primos", [5]),
+                            "pares": st.session_state.get("sel_pares", ["8P / 7I"]),
+                            "moldura": st.session_state.get("sel_moldura", [9]),
+                            "cruz": st.session_state.get("sel_cruz", [4, 5, 6]),
+                            "soma": (int(st.session_state.get("sel_soma", (150, 240))[0]), int(st.session_state.get("sel_soma", (150, 240))[1]))
+                        }
+                        st.session_state.presets_filtros[nome_novo_filtro.strip()] = novo_preset
+                        salvar_presets_persistidos(st.session_state.presets_filtros)
+                        time.sleep(0.3)
+                    st.success(f"✅ Predefinição '{nome_novo_filtro.strip()}' gravada e persistida com sucesso no disco!")
                     st.rerun()
 
     st.divider()
     opcoes_nomes = list(OPCOES_QUANTIDADE.keys())
 
     with st.container(border=True):
-        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05 — De 0 a 5)")
+        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05)")
         cols_l = st.columns(5)
         limites_linhas = []
         for r in range(5):
@@ -723,7 +744,7 @@ with tab_config:
                 limites_linhas.append(OPCOES_QUANTIDADE[esc])
 
     with st.container(border=True):
-        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05 — De 0 a 5)")
+        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05)")
         cols_c = st.columns(5)
         limites_colunas = []
         for c in range(5):
@@ -734,7 +755,7 @@ with tab_config:
     c_diag1, c_diag2 = st.columns(2)
     with c_diag1:
         with st.container(border=True):
-            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05 / — De 0 a 5)")
+            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05)")
             with st.expander("Expandir Diagonais Crescentes", expanded=False):
                 limites_dc = []
                 for d in range(5):
@@ -742,7 +763,7 @@ with tab_config:
                     limites_dc.append(OPCOES_QUANTIDADE[esc])
     with c_diag2:
         with st.container(border=True):
-            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05 \\ — De 0 a 5)")
+            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05)")
             with st.expander("Expandir Diagonais Decrescentes", expanded=False):
                 limites_dd = []
                 for d in range(5):
@@ -760,8 +781,8 @@ with tab_config:
         with c_p3: moldura_sel = st.multiselect("Moldura:", list(range(16)), default=st.session_state.get("sel_moldura", [9]), key="sel_moldura")
         with c_p4: cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [4, 5, 6]), key="sel_cruz")
         with c_p5:
-            val_soma_estado = st.session_state.get("sel_soma", (165, 225))
-            soma_min_val, soma_max_val = (int(val_soma_estado[0]), int(val_soma_estado[1])) if isinstance(val_soma_estado, (list, tuple)) and len(val_soma_estado) == 2 else (165, 225)
+            val_soma_estado = st.session_state.get("sel_soma", (150, 240))
+            soma_min_val, soma_max_val = (int(val_soma_estado[0]), int(val_soma_estado[1])) if isinstance(val_soma_estado, (list, tuple)) and len(val_soma_estado) == 2 else (150, 240)
             faixa_soma = st.slider("Faixa de Soma:", 100, 300, (soma_min_val, soma_max_val), key="sel_soma")
 
     config_total = {
@@ -963,7 +984,7 @@ with tab_historico:
         st.markdown("#### ✅ Dezenas que já saíram no ciclo:")
         ja_deram_str = " • ".join([f"{n:02d}" for n in ciclo_dados['ja_deram']]) if ciclo_dados['ja_deram'] else "Nenhuma dezena registrada"
         st.markdown(f"<div style='background:#facc15;color:#000;padding:12px;border:3px solid #000;border-radius:8px;font-size:1.3rem;font-weight:900;'>{ja_deram_str}</div>", unsafe_allow_html=True)
-        st.markdown(f"**Total já sorteadas:** `{len(ciclo_dados['ja_deram'])} / 25`")
+        st.markdown(f"**Total já sorteadas:** `{len(cicload_dados['ja_deram'] if 'cicload_dados' in locals() else ciclo_dados['ja_deram'])} / 25`")
 
     with col_c2:
         st.markdown("#### ⏳ Dezenas que FALTAM (Ausentes no ciclo):")
@@ -997,8 +1018,10 @@ with tab_notas:
     c_n1, c_n2 = st.columns(2)
     with c_n1:
         if st.button("💾 FORÇAR GRAVAÇÃO", use_container_width=True, type="primary"):
-            salvar_notas_automaticamente(novas_notas)
-            st.success("Anotações gravadas com sucesso no arquivo `meu_bloco_de_notas.txt`!")
+            with st.spinner("⏳ Gravando notas no arquivo local..."):
+                salvar_notas_automaticamente(novas_notas)
+                time.sleep(0.2)
+            st.success("✅ Anotações gravadas com sucesso no arquivo `meu_bloco_de_notas.txt`!")
     with c_n2:
         st.download_button(
             "📥 BAIXAR NOTAS (.TXT)",
