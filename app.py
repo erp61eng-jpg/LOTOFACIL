@@ -394,7 +394,7 @@ def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE D
     jogo_set = set([int(x) for x in dezenas_jogo])
     sorteio_set = set([int(x) for x in dezenas_sorteadas])
     
-    st.markdown(f"<div style='text-align:center; font-weight:900; font-size:26px; margin-bottom:15px; color:#000000; text-transform:uppercase;'>{titulo}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-weight:900; font-size:26px; margin-bottom:15px; color:#000000; text-transform:uppercase;'>📋 ÍCONE DO CARTÃO • {titulo}</div>", unsafe_allow_html=True)
     
     for r in range(5):
         cols = st.columns(5)
@@ -625,12 +625,26 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (CORRIGIDO E BLINDADO)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (COM CARREGAMENTO DIRETO DO SQLITE)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("<h1 style='font-size: 3.2rem !important; color:#000000;'>🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL</h1>", unsafe_allow_html=True)
     
     with st.container(border=True):
+        st.markdown("<h2 style='font-size: 2.4rem !important; color:#000000;'>📥 CARREGAR LOTE DO BANCO SQLITE</h2>", unsafe_allow_html=True)
+        lotes_disponiveis = carregar_lotes_salvos_db()
+        if lotes_disponiveis:
+            opcoes_lotes_tags = [f"{l[0]} ({l[1]} jogos)" for l in lotes_disponiveis]
+            lote_escolhido_str = st.selectbox("Selecione o Lote salvo para Conferir:", opcoes_lotes_tags)
+            if st.button("📂 Carregar Lote Selecionado para Conferência", type="primary"):
+                tag_limpa = lote_escolhido_str.split(" (")[0]
+                st.session_state.jogos_aprovados = carregar_jogos_por_lote_db(tag_limpa)
+                st.success(f"✅ Lote '{tag_limpa}' carregado com {len(st.session_state.jogos_aprovados):,} jogos para conferência!")
+                st.rerun()
+        else:
+            st.warning("⚠️ Nenhum lote salvo no banco SQLite ainda. Gere jogos na aba de Engenharia Reversa.")
+
+        st.markdown("<hr style='border: 4px solid #000000;'>", unsafe_allow_html=True)
         st.markdown("<h2 style='font-size: 2.4rem !important; color:#000000;'>📝 DIGITAÇÃO MANUAL DO RESULTADO</h2>", unsafe_allow_html=True)
         st.markdown("<p style='font-size: 1.8rem !important; color:#000000;'>Digite abaixo as 15 dezenas do sorteio (separadas por espaço, ex: 01 02 03 ... 25):</p>", unsafe_allow_html=True)
         
@@ -690,7 +704,7 @@ with tab_upload:
                 
                 render_volante_5x5_nativo(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
         else:
-            st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba anterior.")
+            st.warning("⚠️ Não há apostas carregadas na memória para conferir. Selecione um lote acima ou gere jogos na aba de Engenharia Reversa.")
     else:
         st.error(f"⚠️ Atenção: foram encontradas {len(sorteio_nums)} dezenas válidas. Por favor, certifique-se de informar exatamente **15 dezenas** únicas entre 01 e 25.")
 
