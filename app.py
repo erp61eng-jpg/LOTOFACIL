@@ -1,4 +1,3 @@
-
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
@@ -111,10 +110,10 @@ MOLDURA_SET = (
 )
 
 CRUZ_CENTRAL_SET = {3, 8, 11, 12, 13, 14, 15, 18, 23}
-DEZENAS_BASE_LOTOFACIL = {1, 3, 5, 12, 13, 14, 23, 25}
+DEZENAS_BASE_LOTOFACIL = {3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25}
 
 FALLBACK_LOTOFACIL = [
-    [1, 2, 4, 5, 6, 10, 11, 13, 15, 16, 18, 20, 21, 22, 23]
+    [3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25]
 ]
 
 HEADERS_CAIXA = {
@@ -146,20 +145,20 @@ OPCOES_QUANTIDADE = {
     "0 a 2": (0, 2), "0 a 3": (0, 3), "0 a 4": (0, 4), "0 a 5": (0, 5),
     "1 a 3": (1, 3), "1 a 4": (1, 4), "1 a 5": (1, 5),
     "2 a 3": (2, 3), "2 a 4": (2, 4), "2 a 5": (2, 5),
-    "3 a 4": (3, 4), "3 a 5": (3, 5),
-    "4 a 5": (4, 5)
+    "3 a 4": (3, 4), "3 a 5": (3, 5), "2 a 4": (2, 4),
+    "1 a 5": (1, 5), "0 a 5": (0, 5)
 }
 
 PRESETS_PADRAO = {
     "JOGO_BASE_COM_FOLGA": {
-        "linhas": ["1 a 5", "1 a 5", "1 a 5", "1 a 5", "1 a 5"],
-        "colunas": ["1 a 5", "1 a 5", "1 a 5", "1 a 5", "1 a 5"],
-        "diag_cresc": ["0 a 5", "0 a 5", "0 a 5", "0 a 5", "0 a 5"],
-        "diag_decresc": ["0 a 5", "0 a 5", "0 a 5", "0 a 5", "0 a 5"],
-        "primos": [3, 4, 5, 6, 7],
-        "pares": ["7P / 8I", "8P / 7I", "9P / 6I", "6P / 9I", "10P / 5I"],
-        "moldura": [9, 10, 11, 12, 13, 14, 15],
-        "cruz": [2, 3, 4, 5, 6, 7, 8],
+        "linhas": [(0, 4), (0, 4), (1, 5), (1, 5), (1, 5)],
+        "colunas": [(0, 4), (0, 4), (1, 5), (1, 5), (1, 5)],
+        "diag_cresc": [(0, 5), (0, 5), (0, 5), (0, 5), (0, 5)],
+        "diag_decresc": [(0, 5), (0, 5), (0, 5), (0, 5), (0, 5)],
+        "primos": [3, 4, 5, 6, 7, 8],
+        "pares": [7, 8, 9, 6, 10],
+        "moldura": list(range(7, 16)),
+        "cruz": list(range(2, 9)),
         "soma": (150, 240)
     }
 }
@@ -234,15 +233,7 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-def mapear_quantidade_para_rotulo_inteligente(qtd):
-    min_v = max(0, qtd - 2)
-    max_v = min(5, qtd + 2)
-    for label, (low, high) in OPCOES_QUANTIDADE.items():
-        if low == min_v and high == max_v:
-            return label
-    return "0 a 5"
-
-def extrair_filtros_de_jogo(dezenas, margem_soma=45):
+def extrair_filtros_de_jogo(dezenas, margem_soma=40):
     dezenas = sorted(list(set(dezenas)))
     total_dezenas = len(dezenas)
     if not (15 <= total_dezenas <= 25): return None
@@ -254,8 +245,12 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=45):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
+    # Folga exata de ±1 com limites seguros entre 0 e 5
+    def faixa_folga(val):
+        return (max(0, val - 1), min(5, val + 1))
+
     pares_jogo = sum(1 for n in dezenas if PAR_LOOKUP[n])
-    pares_calibrados = sorted(list({f"{p}P / {15-p}I" for p in range(max(4, pares_jogo-2), min(12, pares_jogo+3))}))
+    pares_calibrados = sorted(list(range(max(4, pares_jogo - 2), min(12, pares_jogo + 3))))
     
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
     primos_calibrados = sorted(list(range(max(1, primos_total - 2), min(10, primos_total + 3))))
@@ -271,10 +266,10 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=45):
     faixa_soma_max = min(250, soma_total + margem_soma)
 
     return {
-        "linhas": [mapear_quantidade_para_rotulo_inteligente(q) for q in l_cnt],
-        "colunas": [mapear_quantidade_para_rotulo_inteligente(q) for q in c_cnt],
-        "diag_cresc": [mapear_quantidade_para_rotulo_inteligente(q) for q in dc_cnt],
-        "diag_decresc": [mapear_quantidade_para_rotulo_inteligente(q) for q in dd_cnt],
+        "linhas": [faixa_folga(q) for q in l_cnt],
+        "colunas": [faixa_folga(q) for q in c_cnt],
+        "diag_cresc": [faixa_folga(q) for q in dc_cnt],
+        "diag_decresc": [faixa_folga(q) for q in dd_cnt],
         "primos": primos_calibrados,
         "pares": pares_calibrados,
         "moldura": moldura_calibrada,
@@ -438,15 +433,11 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 def aplicar_preset(nome_preset):
     cfg_p = st.session_state.presets_filtros.get(nome_preset)
     if not cfg_p: return
-    for r in range(5): st.session_state[f"sel_l_{r}"] = cfg_p["linhas"][r]
-    for c in range(5): st.session_state[f"sel_c_{c}"] = cfg_p["colunas"][c]
-    for d in range(5):
-        st.session_state[f"sel_dc_{d}"] = cfg_p["diag_cresc"][d]
-        st.session_state[f"sel_dd_{d}"] = cfg_p["diag_decresc"][d]
+    # Armazena diretamente os tuplos de limites numéricos no session state se necessário
     st.session_state["sel_primos"] = cfg_p["primos"]
     st.session_state["sel_pares"] = cfg_p["pares"]
     st.session_state["sel_moldura"] = cfg_p["moldura"]
-    st.session_state["sel_cruz"] = cfg_p.get("cruz", [2, 3, 4, 5, 6, 7, 8])
+    st.session_state["sel_cruz"] = cfg_p.get("cruz", list(range(2, 9)))
     soma_raw = cfg_p.get("soma", (150, 240))
     st.session_state["sel_soma"] = (int(soma_raw[0]), int(soma_raw[1]))
 
@@ -542,8 +533,8 @@ with tab_config:
     st.markdown("### 🎛️ FILTROS ESTRUTURAIS & DIAGONAIS")
     
     with st.container(border=True):
-        st.markdown("#### ⚡ ENGENHARIA REVERSA EXATA COM FOLGA SEGURA")
-        st.caption("Cole seu jogo base. O sistema vai extrair a estrutura dele e abrir uma margem de segurança ampla.")
+        st.markdown("#### ⚡ ENGENHARIA REVERSA EXATA COM FOLGA SEGURA (±1)")
+        st.caption("Cole seu jogo base. O sistema extrairá os limites exatos e abrirá a folga matemática para gerar milhares de jogos válidos.")
         
         entrada_dezenas_filtro = st.text_area(
             "Cole seu jogo base aqui:",
@@ -564,73 +555,47 @@ with tab_config:
                 salvar_presets_persistidos(st.session_state.presets_filtros)
                 aplicar_preset("JOGO_BASE_COM_FOLGA")
                 st.session_state.pool_trabalho = set(dezenas_limpas)
-                st.success("✅ Filtro extraído, calibrado e ativado com sucesso!")
+                st.success("✅ Filtro extraído e calibrado com sucesso!")
                 st.rerun()
 
+    # Obtém o preset ativo
+    cfg_ativo = st.session_state.presets_filtros.get("JOGO_BASE_COM_FOLGA", PRESETS_PADRAO["JOGO_BASE_COM_FOLGA"])
+
     st.divider()
-    opcoes_nomes = list(OPCOES_QUANTIDADE.keys())
+    with st.container(border=True):
+        st.markdown("#### 1️⃣ LIMITES AUTOMÁTICOS EXTRAÍDOS DO SEU JOGO (COM FOLGA ±1)")
+        c_l1, c_l2 = st.columns(2)
+        with c_l1:
+            st.write("**Linhas (L1 a L5):**", cfg_ativo["linhas"])
+            st.write("**Colunas (C1 a C5):**", cfg_ativo["colunas"])
+        with c_l2:
+            st.write("**Diagonais Crescentes:**", cfg_ativo["diag_cresc"])
+            st.write("**Diagonais Decrescentes:**", cfg_ativo["diag_decresc"])
 
     with st.container(border=True):
-        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05)")
-        cols_l = st.columns(5)
-        limites_linhas = []
-        for r in range(5):
-            with cols_l[r]:
-                esc = st.selectbox(f"Linha {r+1:02d}", opcoes_nomes, key=f"sel_l_{r}")
-                limites_linhas.append(OPCOES_QUANTIDADE[esc])
-
-    with st.container(border=True):
-        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05)")
-        cols_c = st.columns(5)
-        limites_colunas = []
-        for c in range(5):
-            with cols_c[c]:
-                esc = st.selectbox(f"Coluna {c+1:02d}", opcoes_nomes, key=f"sel_c_{c}")
-                limites_colunas.append(OPCOES_QUANTIDADE[esc])
-
-    c_diag1, c_diag2 = st.columns(2)
-    with c_diag1:
-        with st.container(border=True):
-            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05)")
-            limites_dc = []
-            for d in range(5):
-                esc = st.selectbox(f"DC{d+1:02d}", opcoes_nomes, key=f"sel_dc_{d}")
-                limites_dc.append(OPCOES_QUANTIDADE[esc])
-    with c_diag2:
-        with st.container(border=True):
-            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05)")
-            limites_dd = []
-            for d in range(5):
-                esc = st.selectbox(f"DD{d+1:02d}", opcoes_nomes, key=f"sel_dd_{d}")
-                limites_dd.append(OPCOES_QUANTIDADE[esc])
-
-    with st.container(border=True):
-        st.markdown("#### 5️⃣ RESTRIÇÕES CALIBRADORAS")
+        st.markdown("#### 2️⃣ RESTRIÇÕES CALIBRADORAS")
         c_p1, c_p2, c_p3, c_p4, c_p5 = st.columns(5)
         with c_p1: 
-            primos_sel = st.multiselect("Primos:", list(range(10)), default=st.session_state.get("sel_primos", [3, 4, 5, 6, 7]), key="sel_primos")
+            primos_sel = st.multiselect("Primos:", list(range(10)), default=cfg_ativo["primos"], key="sel_primos")
         with c_p2:
-            opcoes_par = {"7P / 8I": 7, "8P / 7I": 8, "9P / 6I": 9, "6P / 9I": 6, "10P / 5I": 10}
+            opcoes_par = {f"{p}P / {15-p}I": p for p in range(5, 11)}
             chaves_opcoes_par = list(opcoes_par.keys())
-            
-            default_salvo = st.session_state.get("sel_pares", ["7P / 8I", "8P / 7I", "9P / 6I", "6P / 9I", "10P / 5I"])
-            default_valido = [p for p in default_salvo if p in chaves_opcoes_par]
-            if not default_valido:
-                default_valido = chaves_opcoes_par.copy()
-
-            par_sel = st.multiselect("Pares/Ímpares:", chaves_opcoes_par, default=default_valido, key="sel_pares")
+            default_pares_str = [f"{p}P / {15-p}I" for p in cfg_ativo["pares"] if f"{p}P / {15-p}I" in opcoes_par]
+            if not default_pares_str: default_pares_str = chaves_opcoes_par
+            par_sel = st.multiselect("Pares/Ímpares:", chaves_opcoes_par, default=default_pares_str, key="sel_pares")
             pares_valores = {opcoes_par[k] for k in par_sel}
         with c_p3: 
-            moldura_sel = st.multiselect("Moldura:", list(range(16)), default=st.session_state.get("sel_moldura", [9, 10, 11, 12, 13, 14, 15]), key="sel_moldura")
+            moldura_sel = st.multiselect("Moldura:", list(range(16)), default=cfg_ativo["moldura"], key="sel_moldura")
         with c_p4: 
-            cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [2, 3, 4, 5, 6, 7, 8]), key="sel_cruz")
+            cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=cfg_ativo["cruz"], key="sel_cruz")
         with c_p5:
-            val_soma_estado = st.session_state.get("sel_soma", (150, 240))
+            val_soma_estado = cfg_ativo["soma"]
             faixa_soma = st.slider("Faixa de Soma:", 100, 300, (int(val_soma_estado[0]), int(val_soma_estado[1])), key="sel_soma")
 
     config_total = {
-        "linhas": limites_linhas, "colunas": limites_colunas, "diag_cresc": limites_dc,
-        "diag_decresc": limites_dd, "primos_aceitos": set(primos_sel), "pares_aceitos": pares_valores,
+        "linhas": cfg_ativo["linhas"], "colunas": cfg_ativo["colunas"], 
+        "diag_cresc": cfg_ativo["diag_cresc"], "diag_decresc": cfg_ativo["diag_decresc"],
+        "primos_aceitos": set(primos_sel), "pares_aceitos": pares_valores,
         "moldura_aceita": set(moldura_sel), "cruz_aceita": set(cruz_sel), "faixa_soma": faixa_soma
     }
 
@@ -640,7 +605,7 @@ with tab_config:
             resultados = executar_varredura_pool(st.session_state.pool_trabalho, config_total, st.empty(), st.empty(), teto_max=None)
             st.session_state.jogos_aprovados = resultados
             if resultados: st.markdown(f"<div class='progresso-gigante'>✅ SUCESSO: {len(resultados):,} APOSTAS GERADAS</div>", unsafe_allow_html=True)
-            else: st.warning("⚠️ Nenhuma combinação atendeu aos filtros selecionados. Afrouxe um pouco mais os limites de linhas ou moldura.")
+            else: st.warning("⚠️ Nenhuma combinação atendeu aos filtros selecionados.")
 
     if st.session_state.jogos_aprovados:
         qtd_gerada = len(st.session_state.jogos_aprovados)
@@ -752,7 +717,7 @@ with tab_upload:
                             st.error(f"Erro: {e}")
                 dezenas_conf = st.session_state.get("concurso_buscado_temp", [])
             else:
-                ult_def = st.session_state.historico[-1] if st.session_state.historico else [1, 2, 4, 7, 10, 11, 13, 14, 15, 17, 19, 20, 22, 23, 25]
+                ult_def = st.session_state.historico[-1] if st.session_state.historico else [3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25]
                 entrada_manual = st.text_input("15 Dezenas Sorteadas (espaços):", value=" ".join([f"{n:02d}" for n in sorted(ult_def)]))
                 nums_man = [int(x) for x in re.findall(r"\b\d+\b", entrada_manual)]
                 dezenas_conf = sorted(list(set([n for n in nums_man if 1 <= n <= 25])))
