@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE E ALINHAMENTO PERFEITO)
+# ESTILIZAÇÃO CSS GLOBAL (ANTI-LOOP E ALTO CONTRASTE)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -443,7 +443,7 @@ if "input_dezenas_texto" not in st.session_state:
     st.session_state.input_dezenas_texto = " ".join([f"{n:02d}" for n in JOGO_BASE_PADRAO])
 
 if "sorteio_manual" not in st.session_state:
-    st.session_state.sorteio_manual = "01 02 03 04 05 06 07 08 09 10 11 12 13 14 15"
+    st.session_state.sorteio_manual = "03 05 07 08 11 13 14 15 18 19 20 21 22 23 25"
 
 dados_calor = calcular_metricas_elliott(st.session_state.historico)
 ranking_elliott = sorted(dados_calor.values(), key=lambda x: x["score"], reverse=True)
@@ -627,7 +627,7 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (ALINHADO E DINÂMICO)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (ESTÁVEL, SEM LOOP)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL")
@@ -637,21 +637,19 @@ with tab_upload:
         lotes_disponiveis = carregar_lotes_salvos_db()
         if lotes_disponiveis:
             opcoes_lotes_tags = [f"{l[0]} ({l[1]} jogos)" for l in lotes_disponiveis]
-            lote_escolhido_str = st.selectbox("Selecione o Lote salvo para Conferir:", opcoes_lotes_tags)
+            lote_escolhido_str = st.selectbox("Selecione o Lote salvo para Conferir:", opcoes_lotes_tags, key="sel_lote_conferencia_principal")
             if st.button("📂 Carregar Lote Selecionado para Conferência", type="primary"):
                 tag_limpa = lote_escolhido_str.split(" (")[0]
                 st.session_state.jogos_aprovados = carregar_jogos_por_lote_db(tag_limpa)
                 st.success(f"✅ Lote '{tag_limpa}' carregado com {len(st.session_state.jogos_aprovados):,} jogos para conferência!")
-                st.rerun()
         else:
             st.warning("⚠️ Nenhum lote salvo no banco SQLite ainda. Gere jogos na aba de Engenharia Reversa.")
 
         st.markdown("---")
         st.markdown("#### 📝 DIGITAÇÃO MANUAL DO RESULTADO")
         
-        # Campo dinâmico que lê perfeitamente o que o usuário digita
-        sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value=st.session_state.sorteio_manual, key="input_sorteio_manual_dinamico")
-        st.session_state.sorteio_manual = sorteio_str
+        # Campo sem loop automático
+        st.session_state.sorteio_manual = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value=st.session_state.sorteio_manual, key="input_sorteio_manual_estavel")
         
         arquivo_manual = st.file_uploader("Ou carregar arquivo de resultado (.txt)", type=["txt"])
         if arquivo_manual is not None:
@@ -660,12 +658,11 @@ with tab_upload:
                 nums_arq = [int(x) for x in re.findall(r"\b\d+\b", conteudo_arq)]
                 if len(nums_arq) >= 15:
                     st.session_state.sorteio_manual = " ".join([f"{n:02d}" for n in sorted(list(set(nums_arq))[:15])])
-                    st.success("✅ Arquivo manual carregado com sucesso! Atualize a página se necessário.")
-                    st.rerun()
+                    st.success("✅ Arquivo manual carregado com sucesso no campo acima!")
             except Exception as e:
                 st.error(f"Erro ao ler arquivo: {e}")
 
-    # Tratamento rigoroso das dezenas do sorteio
+    # Tratamento seguro das dezenas do sorteio
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", st.session_state.sorteio_manual)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
@@ -698,11 +695,10 @@ with tab_upload:
                 for idx, item in enumerate(relatorio[:100]):
                     opcoes_inspecao.append(f"Aposta #{idx+1:04d} — {item['qtd_acertos']} acertos")
 
-            # Layout Lado a Lado perfeitamente alinhado
             col_sel, col_cartao = st.columns([1.2, 1])
             
             with col_sel:
-                escolha_inspecao = st.selectbox("Selecione a Aposta:", opcoes_inspecao, key="select_inspecao_aposta")
+                escolha_inspecao = st.selectbox("Selecione a Aposta:", opcoes_inspecao, key="select_inspecao_aposta_estavel")
             
             if escolha_inspecao:
                 num_aposta_selecionada = int(re.findall(r"#(\d+)", escolha_inspecao)[0])
