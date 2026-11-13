@@ -145,8 +145,7 @@ OPCOES_QUANTIDADE = {
     "0 a 2": (0, 2), "0 a 3": (0, 3), "0 a 4": (0, 4), "0 a 5": (0, 5),
     "1 a 3": (1, 3), "1 a 4": (1, 4), "1 a 5": (1, 5),
     "2 a 3": (2, 3), "2 a 4": (2, 4), "2 a 5": (2, 5),
-    "3 a 4": (3, 4), "3 a 5": (3, 5), "2 a 4": (2, 4),
-    "1 a 5": (1, 5), "0 a 5": (0, 5)
+    "3 a 4": (3, 4), "3 a 5": (3, 5)
 }
 
 PRESETS_PADRAO = {
@@ -245,7 +244,6 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=40):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # Folga exata de ±1 com limites seguros entre 0 e 5
     def faixa_folga(val):
         return (max(0, val - 1), min(5, val + 1))
 
@@ -433,7 +431,6 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 def aplicar_preset(nome_preset):
     cfg_p = st.session_state.presets_filtros.get(nome_preset)
     if not cfg_p: return
-    # Armazena diretamente os tuplos de limites numéricos no session state se necessário
     st.session_state["sel_primos"] = cfg_p["primos"]
     st.session_state["sel_pares"] = cfg_p["pares"]
     st.session_state["sel_moldura"] = cfg_p["moldura"]
@@ -558,7 +555,6 @@ with tab_config:
                 st.success("✅ Filtro extraído e calibrado com sucesso!")
                 st.rerun()
 
-    # Obtém o preset ativo
     cfg_ativo = st.session_state.presets_filtros.get("JOGO_BASE_COM_FOLGA", PRESETS_PADRAO["JOGO_BASE_COM_FOLGA"])
 
     st.divider()
@@ -578,10 +574,22 @@ with tab_config:
         with c_p1: 
             primos_sel = st.multiselect("Primos:", list(range(10)), default=cfg_ativo["primos"], key="sel_primos")
         with c_p2:
-            opcoes_par = {f"{p}P / {15-p}I": p for p in range(5, 11)}
+            opcoes_par = {"7P / 8I": 7, "8P / 7I": 8, "9P / 6I": 9, "6P / 9I": 6, "10P / 5I": 10}
             chaves_opcoes_par = list(opcoes_par.keys())
-            default_pares_str = [f"{p}P / {15-p}I" for p in cfg_ativo["pares"] if f"{p}P / {15-p}I" in opcoes_par]
-            if not default_pares_str: default_pares_str = chaves_opcoes_par
+            
+            pares_cfg = cfg_ativo.get("pares", [7, 8, 9])
+            default_pares_str = []
+            for p in pares_cfg:
+                if isinstance(p, int):
+                    rotulo = f"{p}P / {15-p}I"
+                    if rotulo in opcoes_par:
+                        default_pares_str.append(rotulo)
+                elif isinstance(p, str) and p in opcoes_par:
+                    default_pares_str.append(p)
+            
+            if not default_pares_str:
+                default_pares_str = chaves_opcoes_par.copy()
+
             par_sel = st.multiselect("Pares/Ímpares:", chaves_opcoes_par, default=default_pares_str, key="sel_pares")
             pares_valores = {opcoes_par[k] for k in par_sel}
         with c_p3: 
