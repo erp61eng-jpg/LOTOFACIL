@@ -190,7 +190,7 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-def extrair_filtros_de_jogo(dezenas, margem_soma=50):
+def extrair_filtros_de_jogo(dezenas, margem_soma=25):
     dezenas = sorted(list(set(dezenas)))
     if len(dezenas) < 15: dezenas = JOGO_BASE_PADRAO
 
@@ -201,8 +201,9 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=50):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    def faixa_folga(val):
-        return [max(0, val - 2), min(5, val + 2)]
+    # RESTRIÇÃO CIRÚRGICA EXATA DE +-1 PONTO
+    def faixa_estrita_mais_menos_1(val):
+        return [max(0, val - 1), min(5, val + 1)]
 
     pares_jogo = sum(1 for n in dezenas if PAR_LOOKUP[n])
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
@@ -211,20 +212,20 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=50):
     soma_total = sum(dezenas[:15])
 
     return {
-        "linhas": [faixa_folga(q) for q in l_cnt],
-        "colunas": [faixa_folga(q) for q in c_cnt],
-        "diag_cresc": [faixa_folga(q) for q in dc_cnt],
-        "diag_decresc": [faixa_folga(q) for q in dd_cnt],
-        "primos": list(range(max(1, primos_total - 2), min(10, primos_total + 3))),
-        "pares": [7, 8, 9, 6, 10],
-        "moldura": list(range(max(5, moldura_total - 3), min(16, moldura_total + 4))),
-        "cruz": list(range(max(1, cruz_total - 3), min(10, cruz_total + 4))),
-        "soma": [max(130, soma_total - margem_soma), min(260, soma_total + margem_soma)]
+        "linhas": [faixa_estrita_mais_menos_1(q) for q in l_cnt],
+        "colunas": [faixa_estrita_mais_menos_1(q) for q in c_cnt],
+        "diag_cresc": [faixa_estrita_mais_menos_1(q) for q in dc_cnt],
+        "diag_decresc": [faixa_estrita_mais_menos_1(q) for q in dd_cnt],
+        "primos": list(range(max(1, primos_total - 1), min(10, primos_total + 2))),
+        "pares": list(range(max(4, pares_jogo - 1), min(12, pares_jogo + 2))),
+        "moldura": list(range(max(5, moldura_total - 1), min(16, moldura_total + 2))),
+        "cruz": list(range(max(1, cruz_total - 1), min(10, cruz_total + 2))),
+        "soma": [max(140, soma_total - margem_soma), min(250, soma_total + margem_soma)]
     }
 
 def validar_aposta_final_15(jogo, cfg):
     soma_j = sum(jogo)
-    faixa_soma = cfg.get("soma", [130, 260])
+    faixa_soma = cfg.get("soma", [140, 250])
     if not (faixa_soma[0] <= soma_j <= faixa_soma[1]): return False
     
     if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg.get("pares", []): return False
@@ -318,7 +319,7 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • ENGENHARIA REVERSA PRECISA")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO")
 
 tab_cartela, tab_config, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -376,13 +377,13 @@ with tab_cartela:
 # ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (COM LINHAS E COLUNAS MANUAIS)
 # ------------------------------------------------------------------------------
 with tab_config:
-    st.markdown("### 🎛️ ENGENHARIA REVERSA & RESTRIÇÕES DETALHADAS")
+    st.markdown("### 🎛️ ENGENHARIA REVERSA & RESTRIÇÕES DETALHADAS (±1 PONTO)")
     with st.container(border=True):
-        st.caption("Insira suas 15 dezenas de base. O sistema calibrará os seletores automaticamente para você.")
+        st.caption("Insira suas 15 dezenas de base. O sistema extrairá a estrutura exata e aplicará a margem de ±1 ponto em cima de cada linha, coluna e diagonal.")
         txt_base = st.text_area("Suas 15 Dezenas:", value=st.session_state.input_dezenas_texto, height=75)
         st.session_state.input_dezenas_texto = txt_base
 
-        if st.button("⚡ EXTRAIR E CALIBRAR FILTROS", type="primary", use_container_width=True):
+        if st.button("⚡ EXTRAIR E CALIBRAR FILTROS (±1 PONTO)", type="primary", use_container_width=True):
             nums = [int(x) for x in re.findall(r"\b\d+\b", txt_base)]
             nums_limpos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
             if len(nums_limpos) < 15:
@@ -391,7 +392,7 @@ with tab_config:
                 cfg_gerada = extrair_filtros_de_jogo(nums_limpos[:15])
                 st.session_state["cfg_ativa"] = cfg_gerada
                 st.session_state.pool_trabalho = set(nums_limpos[:15])
-                st.success("✅ Filtros extraídos e calibrados com sucesso!")
+                st.success("✅ Filtros extraídos com margem restrita de ±1 ponto!")
                 st.rerun()
 
     cfg_ativo = st.session_state.get("cfg_ativa", extrair_filtros_de_jogo(JOGO_BASE_PADRAO))
