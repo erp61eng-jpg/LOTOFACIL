@@ -139,26 +139,17 @@ for n in range(1, 26):
         "is_cruz": CRUZ_LOOKUP[n], "is_fib": n in FIBONACCI_LOTOFACIL
     }
 
-OPCOES_QUANTIDADE = {
-    "Livre (0 a 5)": (0, 5), "0 (Nenhuma)": (0, 0), "Exatamente 1 (01)": (1, 1),
-    "Exatamente 2 (02)": (2, 2), "Exatamente 3 (03)": (3, 3), "Exatamente 4": (4, 4), "Exatamente 5": (5, 5),
-    "0 a 2": (0, 2), "0 a 3": (0, 3), "0 a 4": (0, 4), "0 a 5": (0, 5),
-    "1 a 3": (1, 3), "1 a 4": (1, 4), "1 a 5": (1, 5),
-    "2 a 3": (2, 3), "2 a 4": (2, 4), "2 a 5": (2, 5),
-    "3 a 4": (3, 4), "3 a 5": (3, 5)
-}
-
 PRESETS_PADRAO = {
     "JOGO_BASE_COM_FOLGA": {
-        "linhas": [(0, 4), (0, 4), (1, 5), (1, 5), (1, 5)],
-        "colunas": [(0, 4), (0, 4), (1, 5), (1, 5), (1, 5)],
-        "diag_cresc": [(0, 5), (0, 5), (0, 5), (0, 5), (0, 5)],
-        "diag_decresc": [(0, 5), (0, 5), (0, 5), (0, 5), (0, 5)],
+        "linhas": [[0, 4], [0, 4], [1, 5], [1, 5], [1, 5]],
+        "colunas": [[0, 4], [0, 4], [1, 5], [1, 5], [1, 5]],
+        "diag_cresc": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
+        "diag_decresc": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
         "primos": [3, 4, 5, 6, 7, 8],
         "pares": [7, 8, 9, 6, 10],
         "moldura": list(range(7, 16)),
         "cruz": list(range(2, 9)),
-        "soma": (150, 240)
+        "soma": [150, 240]
     }
 }
 
@@ -245,7 +236,7 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=40):
         dd_cnt[DD_LOOKUP[n]] += 1
 
     def faixa_folga(val):
-        return (max(0, val - 1), min(5, val + 1))
+        return [max(0, val - 1), min(5, val + 1)]
 
     pares_jogo = sum(1 for n in dezenas if PAR_LOOKUP[n])
     pares_calibrados = sorted(list(range(max(4, pares_jogo - 2), min(12, pares_jogo + 3))))
@@ -272,15 +263,17 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=40):
         "pares": pares_calibrados,
         "moldura": moldura_calibrada,
         "cruz": cruz_calibrada,
-        "soma": (faixa_soma_min, faixa_soma_max)
+        "soma": [faixa_soma_min, faixa_soma_max]
     }
 
 def validar_aposta_final_15(jogo, cfg):
     soma_j = sum(jogo)
-    if not (cfg["faixa_soma"][0] <= soma_j <= cfg["faixa_soma"][1]): return False
-    if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg["pares_aceitos"]: return False
-    if sum(1 for n in jogo if PRIMO_LOOKUP[n]) not in cfg["primos_aceitos"]: return False
-    if sum(1 for n in jogo if MOLDURA_LOOKUP[n]) not in cfg["moldura_aceita"]: return False
+    faixa_soma = cfg.get("faixa_soma", [140, 250])
+    if not (faixa_soma[0] <= soma_j <= faixa_soma[1]): return False
+    
+    if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg.get("pares_aceitos", set()): return False
+    if sum(1 for n in jogo if PRIMO_LOOKUP[n]) not in cfg.get("primos_aceitos", set()): return False
+    if sum(1 for n in jogo if MOLDURA_LOOKUP[n]) not in cfg.get("moldura_aceita", set()): return False
     if "cruz_aceita" in cfg and cfg["cruz_aceita"]:
         if sum(1 for n in jogo if CRUZ_LOOKUP[n]) not in cfg["cruz_aceita"]: return False
 
@@ -291,17 +284,22 @@ def validar_aposta_final_15(jogo, cfg):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    for r in range(5):
-        min_l, max_l = cfg["linhas"][r]
-        if not (min_l <= l_cnt[r] <= max_l): return False
-    for c in range(5):
-        min_c, max_c = cfg["colunas"][c]
-        if not (min_c <= c_cnt[c] <= max_c): return False
-    for d in range(5):
-        min_dc, max_dc = cfg["diag_cresc"][d]
-        if not (min_dc <= dc_cnt[d] <= max_dc): return False
-        min_dd, max_dd = cfg["diag_decresc"][d]
-        if not (min_dd <= dd_cnt[d] <= max_dd): return False
+    # Blindagem estrita contra formato incorreto de limites
+    def verificar_limites(contador, lista_limites):
+        for idx, qtd in enumerate(contador):
+            limite = lista_limites[idx]
+            if isinstance(limite, (list, tuple)) and len(limite) == 2:
+                min_v, max_v = limite
+            else:
+                min_v, max_v = 0, 5
+            if not (min_v <= qtd <= max_v):
+                return False
+        return True
+
+    if not verificar_limites(l_cnt, cfg.get("linhas", [[0, 5]]*5)): return False
+    if not verificar_limites(c_cnt, cfg.get("colunas", [[0, 5]]*5)): return False
+    if not verificar_limites(dc_cnt, cfg.get("diag_cresc", [[0, 5]]*5)): return False
+    if not verificar_limites(dd_cnt, cfg.get("diag_decresc", [[0, 5]]*5)): return False
         
     return True
 
@@ -435,7 +433,7 @@ def aplicar_preset(nome_preset):
     st.session_state["sel_pares"] = cfg_p["pares"]
     st.session_state["sel_moldura"] = cfg_p["moldura"]
     st.session_state["sel_cruz"] = cfg_p.get("cruz", list(range(2, 9)))
-    soma_raw = cfg_p.get("soma", (150, 240))
+    soma_raw = cfg_p.get("soma", [150, 240])
     st.session_state["sel_soma"] = (int(soma_raw[0]), int(soma_raw[1]))
 
 if "filtro_inicial_carregado" not in st.session_state:
