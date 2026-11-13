@@ -16,39 +16,38 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # CONFIGURAÇÃO DE PÁGINA (STREAMLIT)
 # ==============================================================================
 st.set_page_config(
-    page_title="LOTOFÁCIL25 - Alto Contraste & Filtro Inteligente",
+    page_title="LOTOFÁCIL25 - Alto Contraste & Filtro Direto",
     page_icon="🍀",
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE PRETO E BRANCO)
+# ESTILIZAÇÃO CSS ENXUTA E DE ALTO CONTRASTE (VISUAL CLÁSSICO)
 st.markdown('''
 <style>
-    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: #ffffff !important;
         color: #000000 !important;
     }
     html, body, [class*="css"], .stMarkdown, p, span, label, div, input, textarea, select {
         color: #000000 !important;
         font-weight: 800 !important;
-        font-family: Arial, Helvetica, sans-serif !important;
-        line-height: 1.6 !important;
+        font-family: Arial, sans-serif !important;
     }
-    h1, h2, h3, h4 { color: #000000 !important; font-weight: 900 !important; }
+    h1, h2, h3 { color: #000000 !important; font-weight: 900 !important; }
     
     [data-testid="stVerticalBlock"] > div[style*="border"] {
         background-color: #f8fafc !important;
         border: 3px solid #000000 !important;
-        border-radius: 10px !important;
+        border-radius: 8px !important;
     }
 
     .stButton > button {
         color: #000000 !important;
-        font-size: 1.35rem !important;
+        font-size: 1.2rem !important;
         font-weight: 900 !important;
         border: 3px solid #000000 !important;
         background-color: #ffffff !important;
-        border-radius: 8px !important;
+        border-radius: 6px !important;
     }
     .stButton > button[kind="primary"] {
         background-color: #facc15 !important;
@@ -56,74 +55,36 @@ st.markdown('''
         border: 3px solid #000000 !important;
     }
     [data-testid="stMetricValue"] {
-        font-size: 2.2rem !important;
+        font-size: 2rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     .progresso-gigante {
-        font-size: 1.5rem !important;
+        font-size: 1.3rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
         background-color: #fef08a !important;
-        padding: 12px;
+        padding: 10px;
         border: 3px solid #000000;
-        border-radius: 8px;
+        border-radius: 6px;
         text-align: center;
         margin: 10px 0;
     }
 </style>
 ''', unsafe_allow_html=True)
 
-
 # ==============================================================================
-# 🛠️ ETAPA 1: CONSTANTES E BANCO DE DADOS LOCAL
+# CONSTANTES E LOOKUPS MATRICIAIS 5x5
 # ==============================================================================
-
-ARQUIVO_NOTAS_LOCAL = "meu_bloco_de_notas.txt"
-
-def carregar_notas_salvas():
-    if os.path.exists(ARQUIVO_NOTAS_LOCAL):
-        try:
-            with open(ARQUIVO_NOTAS_LOCAL, "r", encoding="utf-8") as f:
-                return f.read()
-        except Exception:
-            pass
-    return "Bem-vindo ao seu Bloco de Notas automático da Lotofácil!\nEscreva aqui os seus palpites, esquemas ou matrizes favoritas..."
-
-def salvar_notas_automaticamente(conteudo):
-    try:
-        with open(ARQUIVO_NOTAS_LOCAL, "w", encoding="utf-8") as f:
-            f.write(conteudo)
-    except Exception:
-        pass
-
 TOTAL_NUMS = 25
-TAMANHO_JOGO_FINAL = 15
 FIBONACCI_LOTOFACIL = {1, 2, 3, 5, 8, 13, 21}
 PRIMOS_LOTOFACIL = {2, 3, 5, 7, 11, 13, 17, 19, 23}
 
-MOLDURA_SET = (
-    set(range(1, 6)) |
-    set(range(21, 26)) |
-    {r * 5 + 1 for r in range(5)} |
-    {r * 5 + 5 for r in range(5)}
-)
-
-CRUZ_CENTRAL_SET = {3, 8, 11, 12, 13, 14, 15, 18, 23}
-DEZENAS_BASE_LOTOFACIL = {3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25}
-
-FALLBACK_LOTOFACIL = [
-    [3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25]
-]
-
-HEADERS_CAIXA = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*"
-}
-
 PAR_LOOKUP = [False] + [(n % 2 == 0) for n in range(1, 26)]
 PRIMO_LOOKUP = [False] + [(n in PRIMOS_LOTOFACIL) for n in range(1, 26)]
+MOLDURA_SET = set(range(1, 6)) | set(range(21, 26)) | {r * 5 + 1 for r in range(5)} | {r * 5 + 5 for r in range(5)}
 MOLDURA_LOOKUP = [False] + [(n in MOLDURA_SET) for n in range(1, 26)]
+CRUZ_CENTRAL_SET = {3, 8, 11, 12, 13, 14, 15, 18, 23}
 CRUZ_LOOKUP = [False] + [(n in CRUZ_CENTRAL_SET) for n in range(1, 26)]
 
 ROW_LOOKUP = [0] + [(n - 1) // 5 for n in range(1, 26)]
@@ -131,102 +92,35 @@ COL_LOOKUP = [0] + [(n - 1) % 5 for n in range(1, 26)]
 DC_LOOKUP = [0] + [(((n - 1) % 5) + ((n - 1) // 5)) % 5 for n in range(1, 26)]
 DD_LOOKUP = [0] + [(((n - 1) % 5) - ((n - 1) // 5)) % 5 for n in range(1, 26)]
 
-PROPS = {}
-for n in range(1, 26):
-    PROPS[n] = {
-        "r": ROW_LOOKUP[n], "c": COL_LOOKUP[n], "dc": DC_LOOKUP[n], "dd": DD_LOOKUP[n],
-        "is_primo": PRIMO_LOOKUP[n], "is_par": PAR_LOOKUP[n], "is_moldura": MOLDURA_LOOKUP[n],
-        "is_cruz": CRUZ_LOOKUP[n], "is_fib": n in FIBONACCI_LOTOFACIL
-    }
+JOGO_BASE_PADRAO = [3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25]
 
-PRESETS_PADRAO = {
-    "JOGO_BASE_COM_FOLGA": {
-        "linhas": [[0, 4], [0, 4], [1, 5], [1, 5], [1, 5]],
-        "colunas": [[0, 4], [0, 4], [1, 5], [1, 5], [1, 5]],
-        "diag_cresc": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
-        "diag_decresc": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
-        "primos": [3, 4, 5, 6, 7, 8],
-        "pares": [7, 8, 9, 6, 10],
-        "moldura": list(range(7, 16)),
-        "cruz": list(range(2, 9)),
-        "soma": [150, 240]
-    }
+HEADERS_CAIXA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*"
 }
 
-ARQUIVO_PRESETS_LOCAL = "meus_filtros_salvos_lotofacil.json"
+# ==============================================================================
+# ESTADO DA SESSÃO
+# ==============================================================================
+if "historico" not in st.session_state:
+    st.session_state.historico = [JOGO_BASE_PADRAO]
 
-def carregar_presets_persistidos():
-    if os.path.exists(ARQUIVO_PRESETS_LOCAL):
-        try:
-            with open(ARQUIVO_PRESETS_LOCAL, "r", encoding="utf-8") as f:
-                dados = json.load(f)
-                if isinstance(dados, dict) and dados:
-                    base = PRESETS_PADRAO.copy()
-                    base.update(dados)
-                    return base
-        except Exception:
-            pass
-    return PRESETS_PADRAO.copy()
+if "jogos_aprovados" not in st.session_state:
+    st.session_state.jogos_aprovados = []
 
-def salvar_presets_persistidos(presets):
-    try:
-        with open(ARQUIVO_PRESETS_LOCAL, "w", encoding="utf-8") as f:
-            json.dump(presets, f, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
+if "pool_trabalho" not in st.session_state:
+    st.session_state.pool_trabalho = set(JOGO_BASE_PADRAO)
 
-def calcular_metricas_elliott(historico):
-    total = len(historico)
-    atrasos = {n: total for n in range(1, 26)}
-    freq_3, freq_10 = {n: 0 for n in range(1, 26)}, {n: 0 for n in range(1, 26)}
-    for idx_rev, sorteio in enumerate(reversed(historico)):
-        for n in sorteio:
-            if atrasos[n] == total: atrasos[n] = idx_rev
-            if idx_rev < 3: freq_3[n] += 1
-            if idx_rev < 10: freq_10[n] += 1
-    dados = {}
-    for n in range(1, 26):
-        atr = atrasos[n]
-        dist_fib = min(abs(atr - f) for f in [1, 2, 3, 5, 8, 13])
-        score_retracao = max(0.0, 10.0 - (dist_fib * 2.0))
-        score_impulso = (freq_3[n] * 6.0) + (freq_10[n] * 2.0)
-        score_fib = 3.0 if PROPS[n]["is_fib"] else 0.0
-        penalidade = -3.0 if atr > 10 else 0.0
-        score_total = max(0.0, score_retracao + score_impulso + score_fib + penalidade)
-        dados[n] = {
-            "numero": n, "score": round(score_total, 1), "atraso": atr,
-            "is_fib": PROPS[n]["is_fib"], "is_primo": PROPS[n]["is_primo"],
-            "is_par": PROPS[n]["is_par"], "is_cruz": PROPS[n]["is_cruz"],
-            "dc": PROPS[n]["dc"], "dd": PROPS[n]["dd"], "col": PROPS[n]["c"]
-        }
-    return dados
+if "input_dezenas_texto" not in st.session_state:
+    st.session_state.input_dezenas_texto = " ".join([f"{n:02d}" for n in JOGO_BASE_PADRAO])
 
-def extrair_analise_elite(dados_calor):
-    ranking = sorted(dados_calor.values(), key=lambda x: x["score"], reverse=True)
-    melhores_primos = [x["numero"] for x in ranking if x["is_primo"]][:5]
-    melhores_pares = [x["numero"] for x in ranking if x["is_par"]][:7]
-    melhores_impares = [x["numero"] for x in ranking if not x["is_par"]][:8]
-    
-    dc_scores, dd_scores, col_scores = {d: 0.0 for d in range(5)}, {d: 0.0 for d in range(5)}, {c: 0.0 for c in range(5)}
-    for n, val in dados_calor.items():
-        dc_scores[val["dc"]] += val["score"]
-        dd_scores[val["dd"]] += val["score"]
-        col_scores[val["col"]] += val["score"]
-        
-    melhores_dc = sorted(dc_scores.keys(), key=lambda d: dc_scores[d], reverse=True)[:2]
-    melhores_dd = sorted(dd_scores.keys(), key=lambda d: dd_scores[d], reverse=True)[:2]
-    melhores_col = sorted(col_scores.keys(), key=lambda c: col_scores[c], reverse=True)[:3]
-    
-    pool_elite = sorted(list(set(melhores_primos) | set(melhores_pares) | set(melhores_impares)))
-    return {
-        "primos": melhores_primos, "pares": melhores_pares, "impares": melhores_impares,
-        "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
-    }
-
-def extrair_filtros_de_jogo(dezenas, margem_soma=40):
+# ==============================================================================
+# FUNÇÕES DE ENGENHARIA REVERSA E VALIDAÇÃO
+# ==============================================================================
+def extrair_filtros_precisos(dezenas):
     dezenas = sorted(list(set(dezenas)))
-    total_dezenas = len(dezenas)
-    if not (15 <= total_dezenas <= 25): return None
+    if len(dezenas) < 15:
+        dezenas = JOGO_BASE_PADRAO
 
     l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
     for n in dezenas:
@@ -235,47 +129,39 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=40):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    def faixa_folga(val):
-        return [max(0, val - 1), min(5, val + 1)]
+    def folga(v):
+        return [max(0, v - 2), min(5, v + 2)]
 
     pares_jogo = sum(1 for n in dezenas if PAR_LOOKUP[n])
-    pares_calibrados = sorted(list(range(max(4, pares_jogo - 2), min(12, pares_jogo + 3))))
-    
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
-    primos_calibrados = sorted(list(range(max(1, primos_total - 2), min(10, primos_total + 3))))
-
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
-    moldura_calibrada = sorted(list(range(max(6, moldura_total - 3), min(16, moldura_total + 4))))
-
     cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
-    cruz_calibrada = sorted(list(range(max(1, cruz_total - 3), min(10, cruz_total + 4))))
-
-    soma_total = sum(dezenas[:15]) if total_dezenas > 15 else sum(dezenas)
-    faixa_soma_min = max(140, soma_total - margem_soma)
-    faixa_soma_max = min(250, soma_total + margem_soma)
+    soma_total = sum(dezenas[:15])
 
     return {
-        "linhas": [faixa_folga(q) for q in l_cnt],
-        "colunas": [faixa_folga(q) for q in c_cnt],
-        "diag_cresc": [faixa_folga(q) for q in dc_cnt],
-        "diag_decresc": [faixa_folga(q) for q in dd_cnt],
-        "primos": primos_calibrados,
-        "pares": pares_calibrados,
-        "moldura": moldura_calibrada,
-        "cruz": cruz_calibrada,
-        "soma": [faixa_soma_min, faixa_soma_max]
+        "linhas": [folga(q) for q in l_cnt],
+        "colunas": [folga(q) for q in c_cnt],
+        "diag_cresc": [folga(q) for q in dc_cnt],
+        "diag_decresc": [folga(q) for q in dd_cnt],
+        "primos": list(range(max(1, primos_total - 2), min(10, primos_total + 3))),
+        "pares": list(range(max(4, pares_jogo - 2), min(12, pares_jogo + 3))),
+        "moldura": list(range(max(5, moldura_total - 3), min(16, moldura_total + 4))),
+        "cruz": list(range(max(1, cruz_total - 3), min(10, cruz_total + 4))),
+        "soma": [max(130, soma_total - 50), min(260, soma_total + 50)]
     }
 
-def validar_aposta_final_15(jogo, cfg):
+def validar_aposta(jogo, cfg):
     soma_j = sum(jogo)
-    faixa_soma = cfg.get("faixa_soma", [140, 250])
-    if not (faixa_soma[0] <= soma_j <= faixa_soma[1]): return False
+    faixa_soma = cfg.get("soma", [130, 260])
+    if not (faixa_soma[0] <= soma_j <= faixa_soma[1]):
+        return False
     
-    if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg.get("pares_aceitos", set()): return False
-    if sum(1 for n in jogo if PRIMO_LOOKUP[n]) not in cfg.get("primos_aceitos", set()): return False
-    if sum(1 for n in jogo if MOLDURA_LOOKUP[n]) not in cfg.get("moldura_aceita", set()): return False
-    if "cruz_aceita" in cfg and cfg["cruz_aceita"]:
-        if sum(1 for n in jogo if CRUZ_LOOKUP[n]) not in cfg["cruz_aceita"]: return False
+    if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg.get("pares", []):
+        return False
+    if sum(1 for n in jogo if PRIMO_LOOKUP[n]) not in cfg.get("primos", []):
+        return False
+    if sum(1 for n in jogo if MOLDURA_LOOKUP[n]) not in cfg.get("moldura", []):
+        return False
 
     l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
     for n in jogo:
@@ -284,510 +170,90 @@ def validar_aposta_final_15(jogo, cfg):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # Blindagem estrita contra formato incorreto de limites
-    def verificar_limites(contador, lista_limites):
-        for idx, qtd in enumerate(contador):
-            limite = lista_limites[idx]
-            if isinstance(limite, (list, tuple)) and len(limite) == 2:
-                min_v, max_v = limite
-            else:
-                min_v, max_v = 0, 5
-            if not (min_v <= qtd <= max_v):
+    def check(cnt, limits):
+        for i, val in enumerate(cnt):
+            mn, mx = limits[i]
+            if not (mn <= val <= mx):
                 return False
         return True
 
-    if not verificar_limites(l_cnt, cfg.get("linhas", [[0, 5]]*5)): return False
-    if not verificar_limites(c_cnt, cfg.get("colunas", [[0, 5]]*5)): return False
-    if not verificar_limites(dc_cnt, cfg.get("diag_cresc", [[0, 5]]*5)): return False
-    if not verificar_limites(dd_cnt, cfg.get("diag_decresc", [[0, 5]]*5)): return False
-        
+    if not check(l_cnt, cfg["linhas"]): return False
+    if not check(c_cnt, cfg["colunas"]): return False
+    if not check(dc_cnt, cfg["diag_cresc"]): return False
+    if not check(dd_cnt, cfg["diag_decresc"]): return False
+
     return True
 
-def executar_varredura_pool(pool_dezenas, cfg, bar_progresso, ticker_metricas, teto_max=None):
-    dezenas_candidatas = sorted(list(pool_dezenas))
-    if len(dezenas_candidatas) < 15: return []
-    total_combinacoes = math.comb(len(dezenas_candidatas), 15)
-    jogos_aprovados = []
-    testadas = 0
-    t_ultimo_update = 0.0
-    for comb in combinations(dezenas_candidatas, 15):
-        testadas += 1
-        if validar_aposta_final_15(comb, cfg):
-            jogos_aprovados.append(sorted(list(comb)))
-            if teto_max is not None and len(jogos_aprovados) >= teto_max: break
-        t_agora = time.time()
-        if t_agora - t_ultimo_update >= 0.25:
-            t_ultimo_update = t_agora
-            prog = min(1.0, testadas / total_combinacoes)
-            bar_progresso.progress(prog)
-            ticker_metricas.markdown(f"<div class='progresso-gigante'>PROCESSANDO: {testadas:,} / {total_combinacoes:,} ({prog*100:.1f}%) | APROVADAS: {len(jogos_aprovados):,}</div>", unsafe_allow_html=True)
-    bar_progresso.progress(1.0)
-    return jogos_aprovados
-
-def processar_arquivo_upload(conteudo_bytes):
-    texto = conteudo_bytes.decode("utf-8", errors="ignore")
-    linhas = texto.strip().splitlines()
-    jogos, invalidos = [], 0
-    for linha in linhas:
-        l = linha.strip()
-        if not l: continue
-        nums = [int(x) for x in re.findall(r"\b\d+\b", l)]
-        nums_validos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
-        if len(nums_validos) == 15: jogos.append(nums_validos)
-        else: invalidos += 1
-    return jogos, invalidos
-
-def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
-    sorteio_set = set(dezenas_sorteadas)
-    placar = {15: [], 14: [], 13: [], 12: [], 11: [], 10: []}
-    relatorio = []
-    for idx, jogo in enumerate(lista_jogos):
-        acertos = sorted(list(set(jogo) & sorteio_set))
-        qtd = len(acertos)
-        if qtd in placar:
-            placar[qtd].append(idx + 1)
-        relatorio.append({
-            "num_aposta": idx + 1,
-            "jogo": sorted(jogo),
-            "qtd_acertos": qtd,
-            "acertos": acertos
-        })
-    return relatorio, placar
-
-def calcular_ciclo_lotofacil(historico):
-    todas_25 = set(range(1, 26))
-    if not historico:
-        return {"concursos_no_ciclo": 0, "ja_deram": [], "faltam": sorted(list(todas_25)), "ciclo_fechado": False}
-    dezenas_vistas = set()
-    concursos_ciclo = 0
-    for sorteio in historico:
-        dezenas_vistas.update(sorteio)
-        concursos_ciclo += 1
-        if len(dezenas_vistas) == 25:
-            dezenas_vistas = set()
-            concursos_ciclo = 0
-    faltam = sorted(list(todas_25 - dezenas_vistas)) if dezenas_vistas else []
-    ja_deram = sorted(list(dezenas_vistas))
-    return {"concursos_no_ciclo": concursos_ciclo, "ja_deram": ja_deram, "faltam": faltam, "ciclo_fechado": len(dezenas_vistas) == 0}
-
-def render_html_seguro(conteudo_html, altura=380):
-    try:
-        if hasattr(st, "html"): st.html(conteudo_html)
-        else: components.html(conteudo_html, height=altura, scrolling=False)
-    except Exception:
-        components.html(conteudo_html, height=altura, scrolling=False)
-
-def render_cartao_sorteio_html(dezenas, titulo="CARTÃO OFICIAL DO SORTEIO"):
-    bolas_html = "".join([f"<span style='display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#facc15;color:#000000;font-weight:900;font-size:22px;border-radius:50%;margin:0 4px;border:3px solid #000000;font-family:monospace;'>{n:02d}</span>" for n in dezenas])
-    st.markdown(f'''<div style="background:#ffffff;border:4px solid #000000;border-radius:12px;padding:14px;margin:8px 0;text-align:center;"><div style="font-weight:900;color:#000000;font-size:18px;margin-bottom:8px;text-transform:uppercase;">🏆 {titulo}</div><div style="display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px;">{bolas_html}</div></div>''', unsafe_allow_html=True)
-
-def render_volante_conferencia(jogo, dezenas_sorteio, titulo=""):
-    jogo_set, sorteio_set = set(jogo), set(dezenas_sorteio)
-    celulas = ""
-    for r in range(5):
-        for c in range(5):
-            n = r * 5 + c + 1
-            if n in jogo_set and n in sorteio_set: 
-                celulas += f'<div style="width:50px;height:50px;background:#facc15;color:#000000;font-weight:900;border:3px solid #000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}<span style="font-size:11px;line-height:6px;font-weight:900;">★</span></div>'
-            elif n in jogo_set: 
-                celulas += f'<div style="width:50px;height:50px;background:#38bdf8;color:#000000;font-weight:900;border:3px solid #000000;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}</div>'
-            elif n in sorteio_set: 
-                celulas += f'<div style="width:50px;height:50px;background:#ffffff;color:#000000;font-weight:900;border:3px dashed #000000;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}</div>'
-            else: 
-                celulas += f'<div style="width:50px;height:50px;background:#ffffff;color:#000000;border:1px solid #000000;font-weight:900;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:19px;">{n:02d}</div>'
-    render_html_seguro(f'''<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{{box-sizing:border-box;}}body{{margin:0;padding:0;display:flex;justify-content:center;background:transparent;font-family:Arial,sans-serif;}}.box{{background:#fff;border:4px solid #000000;border-radius:10px;padding:12px;width:fit-content;}}.grid{{display:grid;grid-template-columns:repeat(5,50px);gap:6px;}}</style></head><body><div class="box"><div style="font-weight:900;font-size:18px;margin-bottom:10px;color:#000000;text-align:center;">{titulo}</div><div class="grid">{celulas}</div></div></body></html>''', 360)
-
-
 # ==============================================================================
-# 🛠️ ETAPA 2: ESTADO DA SESSÃO & BLINDAGEM DE DADOS
+# INTERFACE PRINCIPAL
 # ==============================================================================
+st.title("🍀 LOTOFÁCIL 25 - PAINEL DIRETO")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE • MOTOR DE RESTRIÇÃO ENXUTO")
 
-if "historico" not in st.session_state:
-    st.session_state.historico = [sorted(list(j)) for j in FALLBACK_LOTOFACIL]
-    st.session_state.origem = "Base Local Offline"
+tab_principal, tab_conferencia = st.tabs(["🎯 Configuração & Geração", "📊 Conferência de Resultados"])
 
-if "jogos_aprovados" not in st.session_state: st.session_state.jogos_aprovados = []
-if "jogos_upload" not in st.session_state: st.session_state.jogos_upload = []
-if "jogos_filtrados_upload" not in st.session_state: st.session_state.jogos_filtrados_upload = []
-if "nome_arquivo_carregado" not in st.session_state: st.session_state.nome_arquivo_carregado = ""
-
-if "presets_filtros" not in st.session_state:
-    st.session_state.presets_filtros = carregar_presets_persistidos()
-
-if "input_dezenas_digitadas_texto" not in st.session_state:
-    st.session_state.input_dezenas_digitadas_texto = "03 05 07 08 11 13 14 15 18 19 20 21 22 23 25"
-
-dados_calor = calcular_metricas_elliott(st.session_state.historico)
-ranking_elliott = sorted(dados_calor.values(), key=lambda x: x["score"], reverse=True)
-top_20_dezenas = {item["numero"] for item in ranking_elliott[:20]}
-pool_inicial = top_20_dezenas | DEZENAS_BASE_LOTOFACIL
-analise_elite = extrair_analise_elite(dados_calor)
-
-if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.pool_trabalho, set):
-    st.session_state.pool_trabalho = pool_inicial.copy()
-
-def aplicar_preset(nome_preset):
-    cfg_p = st.session_state.presets_filtros.get(nome_preset)
-    if not cfg_p: return
-    st.session_state["sel_primos"] = cfg_p["primos"]
-    st.session_state["sel_pares"] = cfg_p["pares"]
-    st.session_state["sel_moldura"] = cfg_p["moldura"]
-    st.session_state["sel_cruz"] = cfg_p.get("cruz", list(range(2, 9)))
-    soma_raw = cfg_p.get("soma", [150, 240])
-    st.session_state["sel_soma"] = (int(soma_raw[0]), int(soma_raw[1]))
-
-if "filtro_inicial_carregado" not in st.session_state:
-    aplicar_preset("JOGO_BASE_COM_FOLGA")
-    st.session_state.filtro_inicial_carregado = True
-
-def toggle_dezena(n):
-    if not isinstance(st.session_state.pool_trabalho, set):
-        st.session_state.pool_trabalho = set(st.session_state.pool_trabalho)
-    if n in st.session_state.pool_trabalho: st.session_state.pool_trabalho.remove(n)
-    else: st.session_state.pool_trabalho.add(n)
-
-
-# ==============================================================================
-# 🛠️ ETAPA 3: INTERFACE PRINCIPAL
-# ==============================================================================
-
-st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • PLACAR COMPLETO (11 A 15 PONTOS)")
-
-tab_cartela, tab_config, tab_volante, tab_upload, tab_historico, tab_notas = st.tabs([
-    "🎟️ Cartela & Seleção Elite",
-    "🎛️ Filtros & Engenharia Reversa",
-    "🗺️ Volante & Raio-X",
-    "📥 Upload & Conferência",
-    "📊 Histórico & Ciclo",
-    "📝 Bloco de Notas"
-])
-
-# ------------------------------------------------------------------------------
-# ABA 1: CARTELA & SELEÇÃO ELITE
-# ------------------------------------------------------------------------------
-with tab_cartela:
+with tab_principal:
     with st.container(border=True):
-        st.markdown("### 🏆 DESTAQUES DE ELITE")
-        c_el1, c_el2, c_el3, c_el4 = st.columns([1, 1, 1, 1.4])
-        with c_el1:
-            st.markdown("#### 💎 MELHORES PRIMOS")
-            st.markdown(f"<div style='font-size:1.6rem;color:#000000;font-weight:900;'>{' • '.join([f'{n:02d}' for n in analise_elite['primos']])}</div>", unsafe_allow_html=True)
-        with c_el2:
-            st.markdown("#### ⚖️ MELHORES PARES")
-            st.markdown(f"<div style='font-size:1.6rem;color:#000000;font-weight:900;'>{' • '.join([f'{n:02d}' for n in analise_elite['pares']])}</div>", unsafe_allow_html=True)
-        with c_el3:
-            st.markdown("#### 📊 COLUNAS")
-            col_badges = "".join([f"<span style='display:inline-block;background:#facc15;color:#000000;font-weight:900;padding:5px 10px;margin:2px 4px;border:3px solid #000000;border-radius:6px;font-size:1.2rem;'>C{c+1:02d}</span>" for c in analise_elite["colunas"]])
-            st.markdown(f"<div>{col_badges}</div>", unsafe_allow_html=True)
-        with c_el4:
-            st.markdown("#### 📐 DIAGONAIS")
-            dc_badges = "".join([f"<span style='display:inline-block;background:#fef08a;color:#000000;font-weight:900;padding:3px 8px;margin:2px 3px;border:2px solid #000000;border-radius:4px;font-size:1.1rem;'>DC{d+1:02d}</span>" for d in analise_elite["dc"]])
-            dd_badges = "".join([f"<span style='display:inline-block;background:#fef08a;color:#000000;font-weight:900;padding:3px 8px;margin:2px 3px;border:2px solid #000000;border-radius:4px;font-size:1.1rem;'>DD{d+1:02d}</span>" for d in analise_elite["dd"]])
-            st.markdown(f"<div style='margin-bottom:4px;'><b>CRESC:</b> {dc_badges}</div><div><b>DECRESC:</b> {dd_badges}</div>", unsafe_allow_html=True)
-
-    st.subheader("🎟️ CARTELA DE 25 NÚMEROS (MATRIZ 5x5)")
-    c_b1, c_b2, c_b3, c_b4, c_b5 = st.columns(5)
-    with c_b1:
-        if st.button("⭐ Base + Top 20", use_container_width=True):
-            st.session_state.pool_trabalho = (top_20_dezenas | DEZENAS_BASE_LOTOFACIL).copy()
-            st.rerun()
-    with c_b2:
-        if st.button("🔥 Apenas Quentes", use_container_width=True):
-            st.session_state.pool_trabalho = {item["numero"] for item in ranking_elliott[:15]}
-            st.rerun()
-    with c_b3:
-        if st.button("⚡ +7 Fibonacci", use_container_width=True):
-            st.session_state.pool_trabalho = set(st.session_state.pool_trabalho) | FIBONACCI_LOTOFACIL
-            st.rerun()
-    with c_b4:
-        if st.button("✅ Marcar Todas", use_container_width=True):
-            st.session_state.pool_trabalho = set(range(1, 26))
-            st.rerun()
-    with c_b5:
-        if st.button("🧹 Limpar Cartela", use_container_width=True):
-            st.session_state.pool_trabalho = set()
-            st.rerun()
-
-    set_elite = set(analise_elite["pool_elite"])
-    for r in range(5):
-        cols = st.columns(5)
-        for c in range(5):
-            n = r * 5 + c + 1
-            meta = dados_calor[n]
-            esta_ativa = n in st.session_state.pool_trabalho
-            with cols[c]:
-                if st.button(f"{n:02d}{'⭐' if n in set_elite else ''}\n({meta['score']:.0f}p)", key=f"btn_num_{n}", type="primary" if esta_ativa else "secondary", use_container_width=True):
-                    toggle_dezena(n)
-                    st.rerun()
-
-# ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
-# ------------------------------------------------------------------------------
-with tab_config:
-    st.markdown("### 🎛️ FILTROS ESTRUTURAIS & DIAGONAIS")
-    
-    with st.container(border=True):
-        st.markdown("#### ⚡ ENGENHARIA REVERSA EXATA COM FOLGA SEGURA (±1)")
-        st.caption("Cole seu jogo base. O sistema extrairá os limites exatos e abrirá a folga matemática para gerar milhares de jogos válidos.")
+        st.markdown("### ⚡ SUAS 15 DEZENAS DE BASE")
+        st.caption("Insira seu jogo base abaixo. O sistema criará automaticamente a restrição com margem de segurança ajustada para gerar os jogos.")
         
-        entrada_dezenas_filtro = st.text_area(
-            "Cole seu jogo base aqui:",
-            value=st.session_state.input_dezenas_digitadas_texto,
-            height=80,
-            key="input_dezenas_digitadas_widget"
-        )
-        st.session_state.input_dezenas_digitadas_texto = entrada_dezenas_filtro
+        txt_input = st.text_area("Dezenas:", value=st.session_state.input_dezenas_texto, height=70)
+        st.session_state.input_dezenas_texto = txt_input
 
-        if st.button("⚡ EXTRAIR E CALIBRAR FILTRO COM FOLGA", type="primary", use_container_width=True):
-            nums_parse = [int(x) for x in re.findall(r"\b\d+\b", entrada_dezenas_filtro)]
-            dezenas_limpas = sorted(list(set([n for n in nums_parse if 1 <= n <= 25])))
-            if len(dezenas_limpas) < 15: 
-                st.error("⚠️ Informe pelo menos 15 dezenas válidas.")
+        if st.button("🚀 CALIBRAR FILTRO E GERAR JOGOS", type="primary", use_container_width=True):
+            nums = [int(x) for x in re.findall(r"\b\d+\b", txt_input)]
+            nums_limpos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
+            
+            if len(nums_limpos) < 15:
+                st.error("⚠️ Insira exatamente ou pelo menos 15 dezenas válidas (entre 01 e 25).")
             else:
-                preset_extraido = extrair_filtros_de_jogo(dezenas_limpas)
-                st.session_state.presets_filtros["JOGO_BASE_COM_FOLGA"] = preset_extraido
-                salvar_presets_persistidos(st.session_state.presets_filtros)
-                aplicar_preset("JOGO_BASE_COM_FOLGA")
-                st.session_state.pool_trabalho = set(dezenas_limpas)
-                st.success("✅ Filtro extraído e calibrado com sucesso!")
+                st.session_state.pool_trabalho = set(nums_limpos[:15])
+                cfg_gerada = extrair_filtros_precisos(nums_limpos[:15])
+                st.session_state["cfg_ativa"] = cfg_gerada
+                
+                # Executa a varredura combinatória
+                pool = sorted(list(st.session_state.pool_trabalho))
+                aprovados = []
+                bar = st.progress(0.0)
+                txt_status = st.empty()
+                
+                total_comb = math.comb(len(pool), 15) if len(pool) >= 15 else 1
+                testadas = 0
+                
+                for comb in combinations(pool, 15):
+                    testadas += 1
+                    if validar_aposta(comb, cfg_gerada):
+                        aprovados.append(sorted(list(comb)))
+                    if testadas % 100 == 0:
+                        bar.progress(min(1.0, testadas / total_comb))
+                
+                bar.progress(1.0)
+                st.session_state.jogos_aprovados = aprovados
+                st.success(f"✅ Processo concluído! {len(aprovados):,} apostas geradas com sucesso.")
                 st.rerun()
 
-    cfg_ativo = st.session_state.presets_filtros.get("JOGO_BASE_COM_FOLGA", PRESETS_PADRAO["JOGO_BASE_COM_FOLGA"])
-
-    st.divider()
-    with st.container(border=True):
-        st.markdown("#### 1️⃣ LIMITES AUTOMÁTICOS EXTRAÍDOS DO SEU JOGO (COM FOLGA ±1)")
-        c_l1, c_l2 = st.columns(2)
-        with c_l1:
-            st.write("**Linhas (L1 a L5):**", cfg_ativo["linhas"])
-            st.write("**Colunas (C1 a C5):**", cfg_ativo["colunas"])
-        with c_l2:
-            st.write("**Diagonais Crescentes:**", cfg_ativo["diag_cresc"])
-            st.write("**Diagonais Decrescentes:**", cfg_ativo["diag_decresc"])
-
-    with st.container(border=True):
-        st.markdown("#### 2️⃣ RESTRIÇÕES CALIBRADORAS")
-        c_p1, c_p2, c_p3, c_p4, c_p5 = st.columns(5)
-        with c_p1: 
-            primos_sel = st.multiselect("Primos:", list(range(10)), default=cfg_ativo["primos"], key="sel_primos")
-        with c_p2:
-            opcoes_par = {"7P / 8I": 7, "8P / 7I": 8, "9P / 6I": 9, "6P / 9I": 6, "10P / 5I": 10}
-            chaves_opcoes_par = list(opcoes_par.keys())
-            
-            pares_cfg = cfg_ativo.get("pares", [7, 8, 9])
-            default_pares_str = []
-            for p in pares_cfg:
-                if isinstance(p, int):
-                    rotulo = f"{p}P / {15-p}I"
-                    if rotulo in opcoes_par:
-                        default_pares_str.append(rotulo)
-                elif isinstance(p, str) and p in opcoes_par:
-                    default_pares_str.append(p)
-            
-            if not default_pares_str:
-                default_pares_str = chaves_opcoes_par.copy()
-
-            par_sel = st.multiselect("Pares/Ímpares:", chaves_opcoes_par, default=default_pares_str, key="sel_pares")
-            pares_valores = {opcoes_par[k] for k in par_sel}
-        with c_p3: 
-            moldura_sel = st.multiselect("Moldura:", list(range(16)), default=cfg_ativo["moldura"], key="sel_moldura")
-        with c_p4: 
-            cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=cfg_ativo["cruz"], key="sel_cruz")
-        with c_p5:
-            val_soma_estado = cfg_ativo["soma"]
-            faixa_soma = st.slider("Faixa de Soma:", 100, 300, (int(val_soma_estado[0]), int(val_soma_estado[1])), key="sel_soma")
-
-    config_total = {
-        "linhas": cfg_ativo["linhas"], "colunas": cfg_ativo["colunas"], 
-        "diag_cresc": cfg_ativo["diag_cresc"], "diag_decresc": cfg_ativo["diag_decresc"],
-        "primos_aceitos": set(primos_sel), "pares_aceitos": pares_valores,
-        "moldura_aceita": set(moldura_sel), "cruz_aceita": set(cruz_sel), "faixa_soma": faixa_soma
-    }
-
-    st.divider()
-    if st.button("🚀 GERAR E FILTRAR APOSTAS", use_container_width=True, type="primary"):
-        with st.spinner("🛠️ Processando Motor Combinatório..."):
-            resultados = executar_varredura_pool(st.session_state.pool_trabalho, config_total, st.empty(), st.empty(), teto_max=None)
-            st.session_state.jogos_aprovados = resultados
-            if resultados: st.markdown(f"<div class='progresso-gigante'>✅ SUCESSO: {len(resultados):,} APOSTAS GERADAS</div>", unsafe_allow_html=True)
-            else: st.warning("⚠️ Nenhuma combinação atendeu aos filtros selecionados.")
-
     if st.session_state.jogos_aprovados:
-        qtd_gerada = len(st.session_state.jogos_aprovados)
-        st.markdown(f"<div class='progresso-gigante'>TOTAL APROVADO: {qtd_gerada:,} APOSTAS</div>", unsafe_allow_html=True)
-        st.download_button("📥 BAIXAR JOGOS APROVADOS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
+        st.markdown(f"<div class='progresso-gigante'>TOTAL GERADO: {len(st.session_state.jogos_aprovados):,} APOSTAS</div>", unsafe_allow_html=True)
+        txt_download = "\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados])
+        st.download_button("📥 BAIXAR JOGOS (.TXT)", data=txt_download, file_name="lotofacil_jogos.txt", mime="text/plain", use_container_width=True)
 
-# ------------------------------------------------------------------------------
-# ABA 3: VOLANTE VISUAL & RAIO-X
-# ------------------------------------------------------------------------------
-with tab_volante:
-    st.subheader("DISSECAÇÃO DA CARTELA")
-    jogos_exibir = st.session_state.jogos_aprovados or st.session_state.jogos_upload
-    if jogos_exibir:
-        sel_idx = st.slider("Aposta para inspecionar:", 1, len(jogos_exibir), 1)
-        jogo_ativo = sorted(jogos_exibir[sel_idx - 1])
-        render_volante_conferencia(jogo_ativo, [], f"JOGO #{sel_idx:04d}: {' - '.join([f'{n:02d}' for n in jogo_ativo])}")
+with tab_conferencia:
+    st.markdown("### 🎯 CONFERÊNCIA RÁPIDA")
+    if st.session_state.jogos_aprovados:
+        st.info(f"Você tem {len(st.session_state.jogos_aprovados):,} jogos em memória prontos para conferir.")
+        sorteio_str = st.text_input("Digite as 15 dezenas do sorteio:", "01 02 03 04 05 06 07 08 09 10 11 12 13 14 15")
+        sorteio_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
+        
+        if len(sorteio_nums) == 15 and st.button("Conferir Jogos", type="primary"):
+            sort_set = set(sorteio_nums)
+            premios = {15: 0, 14: 0, 13: 0, 12: 0, 11: 0}
+            for j in st.session_state.jogos_aprovados:
+                acertos = len(set(j) & sort_set)
+                if acertos in premios:
+                    premios[acertos] += 1
+            st.metric("Jogos com 14 Pontos", premios[14])
+            st.metric("Jogos com 13 Pontos", premios[13])
+            st.metric("Jogos com 12 Pontos", premios[12])
+            st.metric("Jogos com 11 Pontos", premios[11])
     else:
-        st.info("Gere apostas ou carregue um arquivo para inspecionar.")
-
-# ------------------------------------------------------------------------------
-# ABA 4: UPLOAD & CONFERÊNCIA (COM PERSISTÊNCIA BLINDADA)
-# ------------------------------------------------------------------------------
-with tab_upload:
-    st.subheader("📥 UPLOAD, FILTRAGEM & CONFERÊNCIA DE RESULTADOS")
-    
-    arquivo_enviado = st.file_uploader("Carregue seu arquivo de apostas (.txt ou .csv):", type=["txt", "csv"])
-
-    if arquivo_enviado is not None:
-        if arquivo_enviado.name != st.session_state.get("nome_arquivo_carregado", ""):
-            conteudo = arquivo_enviado.read()
-            jogos_carregados, invalidos = processar_arquivo_upload(conteudo)
-            st.session_state.jogos_upload = jogos_carregados
-            st.session_state.nome_arquivo_carregado = arquivo_enviado.name
-            st.session_state.jogos_filtrados_upload = []
-            if invalidos > 0:
-                st.warning(f"⚠️ {invalidos} linha(s) ignoradas por formato inválido.")
-            st.success(f"Arquivo '{arquivo_enviado.name}' carregado e salvo na memória com sucesso!")
-
-    if st.session_state.jogos_upload:
-        jogos_up = st.session_state.jogos_upload
-        total_up = len(jogos_up)
-        st.markdown(f"<div class='progresso-gigante'>ARQUIVO EM MEMÓRIA: {total_up:,} APOSTAS (Salvo no Estado)</div>", unsafe_allow_html=True)
-
-        with st.container(border=True):
-            st.markdown("#### ⚡ FILTRAR ARQUIVO CARREGADO COM O FILTRO ATIVO")
-            c_flt1, c_flt2 = st.columns([2, 1])
-            with c_flt1:
-                if st.button("🔍 APLICAR FILTROS ATIVOS NO ARQUIVO", type="primary", use_container_width=True):
-                    with st.spinner("Filtrando apostas..."):
-                        aprovados_do_arquivo = [j for j in jogos_up if validar_aposta_final_15(tuple(j), config_total)]
-                        st.session_state.jogos_filtrados_upload = aprovados_do_arquivo
-                        st.markdown(f"<div class='progresso-gigante'>{len(aprovados_do_arquivo):,} DE {total_up:,} APROVADAS</div>", unsafe_allow_html=True)
-
-            if st.session_state.jogos_filtrados_upload:
-                qtd_flt = len(st.session_state.jogos_filtrados_upload)
-                txt_flt = "\n".join([" ".join([f"{n:02d}" for n in sorted(j)]) for j in st.session_state.jogos_filtrados_upload])
-                with c_flt2:
-                    st.download_button(f"💾 BAIXAR LOTE FILTRADO ({qtd_flt:,})", data=txt_flt, file_name=f"lotofacil_filtrado_{qtd_flt}j.txt", mime="text/plain", use_container_width=True)
-
-        st.divider()
-        col_diag_left, col_conf_right = st.columns([1.25, 1.0], gap="large")
-
-        with col_diag_left:
-            st.markdown("### 📊 DIAGNÓSTICO DO ARQUIVO")
-            cnt_nums = Counter()
-            somas = []
-            for j in jogos_up:
-                cnt_nums.update(j)
-                somas.append(sum(j))
-
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Total", f"{total_up:,}")
-            m2.metric("Soma Média", f"{sum(somas)/len(somas):.1f}" if somas else "0")
-            m3.metric("Mais Freq.", f"{cnt_nums.most_common(1)[0][0]:02d}" if cnt_nums else "--")
-
-            st.markdown("#### 🔥 FREQUÊNCIA NA MATRIZ (5x5)")
-            celulas_up_heat = ""
-            for r in range(5):
-                for c in range(5):
-                    n = r * 5 + c + 1
-                    freq = cnt_nums[n]
-                    bg = "#ffffff" if freq == 0 else "#fef08a"
-                    celulas_up_heat += f'<div style="width:50px;height:50px;background:{bg};color:#000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;border:2px solid #000000;box-sizing:border-box;"><span style="font-size:15px;font-weight:900;">{n:02d}</span><span style="font-size:12px;font-weight:900;">{freq}x</span></div>'
-
-            render_html_seguro(f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{{box-sizing:border-box;}}body{{margin:0;padding:0;background:transparent;display:flex;justify-content:center;font-family:Arial,sans-serif;}}.box{{background:#fff;border:4px solid #000000;border-radius:10px;padding:12px;width:fit-content;}}.grid{{display:grid;grid-template-columns:repeat(5,50px);gap:5px;}}</style></head><body><div class="box"><div class="grid">{celulas_up_heat}</div></div></body></html>', 320)
-
-        with col_conf_right:
-            st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS")
-            modo_origem = st.radio("Origem do Sorteio:", ["Último Sorteio Oficial", "Digitar Concurso Específico", "Digitar Dezenas Manualmente"], horizontal=True)
-            dezenas_conf = []
-
-            if modo_origem == "Último Sorteio Oficial":
-                dezenas_conf = sorted(st.session_state.historico[-1]) if st.session_state.historico else []
-            elif modo_origem == "Digitar Concurso Específico":
-                num_conc_busca = st.number_input("Digite o número do Concurso:", min_value=1, value=3000, step=1)
-                if st.button("🔍 Buscar Concurso na Caixa", use_container_width=True):
-                    with st.spinner(f"Consultando o concurso {num_conc_busca}..."):
-                        try:
-                            r_esp = requests.get(f"https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/{num_conc_busca}", headers=HEADERS_CAIXA, timeout=10, verify=False)
-                            if r_esp.status_code == 200:
-                                dados_esp = r_esp.json()
-                                dezenas_esp = sorted([int(x) for x in dados_esp.get("listaDezenas", [])])
-                                if len(dezenas_esp) == 15:
-                                    st.session_state["concurso_buscado_temp"] = dezenas_esp
-                                    st.success(f"Concurso #{num_conc_busca} carregado com sucesso!")
-                                else:
-                                    st.error("Erro ao ler as dezenas.")
-                        except Exception as e:
-                            st.error(f"Erro: {e}")
-                dezenas_conf = st.session_state.get("concurso_buscado_temp", [])
-            else:
-                ult_def = st.session_state.historico[-1] if st.session_state.historico else [3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25]
-                entrada_manual = st.text_input("15 Dezenas Sorteadas (espaços):", value=" ".join([f"{n:02d}" for n in sorted(ult_def)]))
-                nums_man = [int(x) for x in re.findall(r"\b\d+\b", entrada_manual)]
-                dezenas_conf = sorted(list(set([n for n in nums_man if 1 <= n <= 25])))
-
-            if len(dezenas_conf) != 15:
-                st.warning("⚠️ Informe um concurso válido com 15 dezenas para iniciar a conferência.")
-            else:
-                render_cartao_sorteio_html(dezenas_conf, titulo="SORTEIO CONFERIDO")
-                base_conferir = st.session_state.jogos_filtrados_upload or jogos_up
-                relatorio_conf, placar_conf = conferir_apostas_contra_sorteio(base_conferir, dezenas_conf)
-
-                c15, c14, c13, c12, c11 = st.columns(5)
-                c15.metric("15 P", f"{len(placar_conf[15])}")
-                c14.metric("14 P", f"{len(placar_conf[14])}")
-                c13.metric("13 P", f"{len(placar_conf[13])}")
-                c12.metric("12 P", f"{len(placar_conf[12])}")
-                c11.metric("11 P", f"{len(placar_conf[11])}")
-
-                tot_prem = len(placar_conf[15]) + len(placar_conf[14]) + len(placar_conf[13]) + len(placar_conf[12]) + len(placar_conf[11])
-                if tot_prem > 0:
-                    st.markdown(f"<div class='progresso-gigante'>🎉 {tot_prem} APOSTA(S) PREMIADA(S) (11 a 15 PONTOS)!</div>", unsafe_allow_html=True)
-                    jogos_premiados_txt = "\n".join([f"{' '.join([f'{n:02d}' for n in it['jogo']])} | {it['qtd_acertos']} ACERTOS" for it in relatorio_conf if it["qtd_acertos"] >= 11])
-                    st.download_button("📥 BAIXAR APOSTAS PREMIADAS (.TXT)", data=jogos_premiados_txt, file_name=f"lotofacil_premiadas_{tot_prem}j.txt", mime="text/plain", use_container_width=True)
-                else:
-                    st.warning("Nenhuma aposta alcançou pontuação de 11 a 15 acertos.")
-
-                jogos_com_acerto = [it for it in relatorio_conf if it["qtd_acertos"] >= 11] or relatorio_conf
-                opcoes_map = {it["num_aposta"]: f"Aposta #{it['num_aposta']:04d} — {it['qtd_acertos']} acertos" for it in jogos_com_acerto[:50]}
-                if opcoes_map:
-                    idx_escolhido = st.selectbox("Inspecionar no Volante:", list(opcoes_map.keys()), format_func=lambda x: opcoes_map[x])
-                    if idx_escolhido is not None:
-                        item_ativo = next(it for it in relatorio_conf if "num_aposta" in it and it["num_aposta"] == idx_escolhido)
-                        render_volante_conferencia(item_ativo["jogo"], dezenas_conf, titulo=f"Aposta #{item_ativo['num_aposta']:04d} ({item_ativo['qtd_acertos']} Acertos)")
-    else:
-        st.info("Carregue um arquivo .txt ou .csv na parte superior para ativar o painel de conferência. Seus arquivos carregados ficarão salvos na memória.")
-
-# ------------------------------------------------------------------------------
-# ABA 5: HISTÓRICO & CICLO
-# ------------------------------------------------------------------------------
-with tab_historico:
-    st.subheader("📊 HISTÓRICO & CICLO")
-    if st.button("🌐 SINCRONIZAR COM A CAIXA AGORA", type="primary", use_container_width=True):
-        try:
-            r = requests.get("https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil", headers=HEADERS_CAIXA, timeout=10, verify=False)
-            if r.status_code == 200:
-                ult = r.json()
-                dezenas = sorted([int(x) for x in ult.get("listaDezenas", [])])
-                if len(dezenas) == 15 and dezenas not in st.session_state.historico:
-                    st.session_state.historico.append(dezenas)
-                    st.success(f"Concurso #{ult.get('numero')} sincronizado!")
-                    st.rerun()
-        except Exception as e:
-            st.error(f"Erro: {e}")
-
-    ciclo = calcular_ciclo_lotofacil(st.session_state.historico)
-    st.markdown(f"**Concursos no ciclo:** {ciclo['concursos_no_ciclo']}")
-    st.markdown(f"**Faltam ({len(ciclo['faltam'])}):** {' - '.join([f'{n:02d}' for n in ciclo['faltam']])}")
-
-# ------------------------------------------------------------------------------
-# ABA 6: BLOCO DE NOTAS
-# ------------------------------------------------------------------------------
-with tab_notas:
-    st.subheader("📝 BLOCO DE NOTAS")
-    conteudo_atual = carregar_notas_salvas()
-    novas_notas = st.text_area("Anotações:", value=conteudo_atual, height=400)
-    if novas_notas != conteudo_atual:
-        salvar_notas_automaticamente(novas_notas)
+        st.warning("Gere os jogos na aba anterior para habilitar a conferência.")
