@@ -142,42 +142,6 @@ OPCOES_QUANTIDADE = {
     "3 a 4": [3, 4], "3 a 5": [3, 5]
 }
 
-PRESETS_PADRAO = {
-    "JOGO_BASE_COM_FOLGA": {
-        "linhas": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
-        "colunas": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
-        "diag_cresc": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
-        "diag_decresc": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
-        "primos": list(range(3, 9)),
-        "pares": [7, 8, 9, 6, 10],
-        "moldura": list(range(7, 16)),
-        "cruz": list(range(2, 9)),
-        "soma": [130, 260]
-    }
-}
-
-ARQUIVO_PRESETS_LOCAL = "meus_filtros_salvos_lotofacil.json"
-
-def carregar_presets_persistidos():
-    if os.path.exists(ARQUIVO_PRESETS_LOCAL):
-        try:
-            with open(ARQUIVO_PRESETS_LOCAL, "r", encoding="utf-8") as f:
-                dados = json.load(f)
-                if isinstance(dados, dict) and dados:
-                    base = PRESETS_PADRAO.copy()
-                    base.update(dados)
-                    return base
-        except Exception:
-            pass
-    return PRESETS_PADRAO.copy()
-
-def salvar_presets_persistidos(presets):
-    try:
-        with open(ARQUIVO_PRESETS_LOCAL, "w", encoding="utf-8") as f:
-            json.dump(presets, f, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
-
 def calcular_metricas_elliott(historico):
     total = len(historico)
     atrasos = {n: total for n in range(1, 26)}
@@ -338,14 +302,12 @@ if "historico" not in st.session_state:
     st.session_state.historico = [JOGO_BASE_PADRAO]
 
 if "jogos_aprovados" not in st.session_state: st.session_state.jogos_aprovados = []
-if "presets_filtros" not in st.session_state: st.session_state.presets_filtros = carregar_presets_persistidos()
 
 if "input_dezenas_texto" not in st.session_state:
     st.session_state.input_dezenas_texto = " ".join([f"{n:02d}" for n in JOGO_BASE_PADRAO])
 
 dados_calor = calcular_metricas_elliott(st.session_state.historico)
 ranking_elliott = sorted(dados_calor.values(), key=lambda x: x["score"], reverse=True)
-top_20 = {item["numero"] for item in ranking_elliott[:20]}
 analise_elite = extrair_analise_elite(dados_calor)
 
 if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.pool_trabalho, set):
@@ -411,12 +373,12 @@ with tab_cartela:
                     st.rerun()
 
 # ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
+# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (COM LINHAS E COLUNAS MANUAIS)
 # ------------------------------------------------------------------------------
 with tab_config:
-    st.markdown("### 🎛️ ENGENHARIA REVERSA E RESTRIÇÕES")
+    st.markdown("### 🎛️ ENGENHARIA REVERSA & RESTRIÇÕES DETALHADAS")
     with st.container(border=True):
-        st.caption("Insira suas 15 dezenas de base. O sistema extrairá a estrutura e calibrará os seletores.")
+        st.caption("Insira suas 15 dezenas de base. O sistema calibrará os seletores automaticamente para você.")
         txt_base = st.text_area("Suas 15 Dezenas:", value=st.session_state.input_dezenas_texto, height=75)
         st.session_state.input_dezenas_texto = txt_base
 
@@ -435,8 +397,58 @@ with tab_config:
     cfg_ativo = st.session_state.get("cfg_ativa", extrair_filtros_de_jogo(JOGO_BASE_PADRAO))
 
     with st.container(border=True):
-        st.markdown("#### ⚙️ AJUSTE MANUAL DE RESTRIÇÕES")
-        
+        st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05)")
+        opcoes_nomes = list(OPCOES_QUANTIDADE.keys())
+        limites_linhas = []
+        cols_l = st.columns(5)
+        for r in range(5):
+            with cols_l[r]:
+                default_idx = 0
+                val_atual = cfg_ativo["linhas"][r]
+                for nome, rng in OPCOES_QUANTIDADE.items():
+                    if rng == val_atual: default_idx = list(OPCOES_QUANTIDADE.keys()).index(nome)
+                esc = st.selectbox(f"Linha {r+1}", opcoes_nomes, index=default_idx, key=f"sel_l_{r}")
+                limites_linhas.append(OPCOES_QUANTIDADE[esc])
+
+    with st.container(border=True):
+        st.markdown("#### 2️⃣ COLUNAS INDIVIDUAIS (C01 a C05)")
+        limites_colunas = []
+        cols_c = st.columns(5)
+        for c in range(5):
+            with cols_c[c]:
+                default_idx = 0
+                val_atual = cfg_ativo["colunas"][c]
+                for nome, rng in OPCOES_QUANTIDADE.items():
+                    if rng == val_atual: default_idx = list(OPCOES_QUANTIDADE.keys()).index(nome)
+                esc = st.selectbox(f"Coluna {c+1}", opcoes_nomes, index=default_idx, key=f"sel_c_{c}")
+                limites_colunas.append(OPCOES_QUANTIDADE[esc])
+
+    c_diag1, c_diag2 = st.columns(2)
+    with c_diag1:
+        with st.container(border=True):
+            st.markdown("#### 3️⃣ DIAGONAIS CRESCENTES (DC01 a DC05)")
+            limites_dc = []
+            for d in range(5):
+                default_idx = 0
+                val_atual = cfg_ativo["diag_cresc"][d]
+                for nome, rng in OPCOES_QUANTIDADE.items():
+                    if rng == val_atual: default_idx = list(OPCOES_QUANTIDADE.keys()).index(nome)
+                esc = st.selectbox(f"DC{d+1}", opcoes_nomes, index=default_idx, key=f"sel_dc_{d}")
+                limites_dc.append(OPCOES_QUANTIDADE[esc])
+    with c_diag2:
+        with st.container(border=True):
+            st.markdown("#### 4️⃣ DIAGONAIS DECRESCENTES (DD01 a DD05)")
+            limites_dd = []
+            for d in range(5):
+                default_idx = 0
+                val_atual = cfg_ativo["diag_decresc"][d]
+                for nome, rng in OPCOES_QUANTIDADE.items():
+                    if rng == val_atual: default_idx = list(OPCOES_QUANTIDADE.keys()).index(nome)
+                esc = st.selectbox(f"DD{d+1}", opcoes_nomes, index=default_idx, key=f"sel_dd_{d}")
+                limites_dd.append(OPCOES_QUANTIDADE[esc])
+
+    with st.container(border=True):
+        st.markdown("#### 5️⃣ RESTRIÇÕES CALIBRADORAS GLOBAIS")
         c_p1, c_p2, c_p3 = st.columns(3)
         with c_p1:
             primos_sel = st.multiselect("Quantidade de Primos:", list(range(10)), default=cfg_ativo["primos"], key="sel_primos")
@@ -448,11 +460,16 @@ with tab_config:
         faixa_soma_cfg = st.slider("Faixa de Soma Total:", 100, 300, tuple(cfg_ativo["soma"]), key="sel_soma")
 
     if st.button("🚀 GERAR JOGOS COM ESTAS RESTRIÇÕES", type="primary", use_container_width=True):
-        cfg_atualizado = cfg_ativo.copy()
-        cfg_atualizado["primos"] = primos_sel
-        cfg_atualizado["pares"] = pares_sel
-        cfg_atualizado["moldura"] = moldura_sel
-        cfg_atualizado["soma"] = list(faixa_soma_cfg)
+        cfg_atualizado = {
+            "linhas": limites_linhas,
+            "colunas": limites_colunas,
+            "diag_cresc": limites_dc,
+            "diag_decresc": limites_dd,
+            "primos": primos_sel,
+            "pares": pares_sel,
+            "moldura": moldura_sel,
+            "soma": list(faixa_soma_cfg)
+        }
         
         with st.spinner("🛠️ Processando combinações..."):
             aprovados = executar_varredura_pool(st.session_state.pool_trabalho, cfg_atualizado, st.empty(), st.empty())
