@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (LETRAS GIGANTES E TUDO EM PRETO E BRANCO)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE PRETO E BRANCO)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -30,16 +30,16 @@ st.markdown('''
     
     html, body, [class*="css"], .stMarkdown, p, span, label, div, input, textarea, select {
         color: #000000 !important;
-        font-size: 1.4rem !important;
+        font-size: 1.3rem !important;
         font-weight: 900 !important;
         font-family: Arial, Helvetica, sans-serif !important;
-        line-height: 1.6 !important;
+        line-height: 1.5 !important;
     }
     
-    h1 { font-size: 3rem !important; color: #000000 !important; font-weight: 900 !important; }
-    h2 { font-size: 2.4rem !important; color: #000000 !important; font-weight: 900 !important; }
-    h3 { font-size: 2rem !important; color: #000000 !important; font-weight: 900 !important; }
-    h4 { font-size: 1.6rem !important; color: #000000 !important; font-weight: 900 !important; }
+    h1 { font-size: 2.6rem !important; color: #000000 !important; font-weight: 900 !important; }
+    h2 { font-size: 2.1rem !important; color: #000000 !important; font-weight: 900 !important; }
+    h3 { font-size: 1.7rem !important; color: #000000 !important; font-weight: 900 !important; }
+    h4 { font-size: 1.4rem !important; color: #000000 !important; font-weight: 900 !important; }
     
     [data-testid="stVerticalBlock"] > div[style*="border"] {
         background-color: #ffffff !important;
@@ -49,12 +49,12 @@ st.markdown('''
 
     .stButton > button {
         color: #000000 !important;
-        font-size: 1.6rem !important;
+        font-size: 1.4rem !important;
         font-weight: 900 !important;
         border: 4px solid #000000 !important;
         background-color: #ffffff !important;
         border-radius: 8px !important;
-        padding: 10px 20px !important;
+        padding: 8px 16px !important;
     }
     .stButton > button[kind="primary"] {
         background-color: #facc15 !important;
@@ -62,24 +62,24 @@ st.markdown('''
         border: 4px solid #000000 !important;
     }
     
-    /* MÉTRICAS GIGANTES */
+    /* MÉTRICAS DE PLACAR */
     [data-testid="stMetricValue"] {
-        font-size: 4rem !important;
+        font-size: 3rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 1.8rem !important;
+        font-size: 1.4rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     
     .progresso-gigante {
-        font-size: 2rem !important;
+        font-size: 1.6rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
         background-color: #fef08a !important;
-        padding: 18px;
+        padding: 15px;
         border: 4px solid #000000;
         border-radius: 10px;
         text-align: center;
@@ -87,12 +87,12 @@ st.markdown('''
     }
     
     input, textarea, select {
-        font-size: 1.8rem !important;
+        font-size: 1.5rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     label {
-        font-size: 1.6rem !important;
+        font-size: 1.3rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
@@ -390,14 +390,14 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         relatorio.append({"num_aposta": idx + 1, "jogo": jogo_int, "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
-def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE DA APOSTA"):
+def render_volante_compacto_html(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃO"):
+    """Renderiza o volante compacto idêntico ao modelo da foto de referência"""
     jogo_set = set([int(x) for x in dezenas_jogo])
     sorteio_set = set([int(x) for x in dezenas_sorteadas])
     
-    st.markdown(f"<div style='text-align:center; font-weight:900; font-size:26px; margin-bottom:15px; color:#000000; text-transform:uppercase;'>📋 ÍCONE DO CARTÃO • {titulo}</div>", unsafe_allow_html=True)
-    
+    celulas_html = ""
     for r in range(5):
-        cols = st.columns(5)
+        celulas_html += "<div style='display:flex;justify-content:center;gap:4px;margin-bottom:4px;'>"
         for c in range(5):
             n = r * 5 + c + 1
             acertou = (n in jogo_set) and (n in sorteio_set)
@@ -406,22 +406,30 @@ def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE D
             if acertou:
                 bg = "#facc15"
                 color = "#000000"
-                txt_bola = f"{n:02d}<br><span style='font-size:20px; font-weight:900; color:#000000;'>★</span>"
+                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>★</div>"
             elif presente_jogo:
                 bg = "#e4e4e7"
                 color = "#000000"
-                txt_bola = f"{n:02d}<br><span style='font-size:20px;'>&nbsp;</span>"
+                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>&nbsp;</div>"
             else:
                 bg = "#ffffff"
-                color = "#000000"
-                txt_bola = f"{n:02d}<br><span style='font-size:20px;'>&nbsp;</span>"
+                color = "#71717a"
+                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>&nbsp;</div>"
                 
-            with cols[c]:
-                st.markdown(f"""
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:75px;background:{bg};color:{color};font-weight:900;font-size:28px;border:4px solid #000000;border-radius:12px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:8px;">
-                    {txt_bola}
-                </div>
-                """, unsafe_allow_html=True)
+            celulas_html += f"""
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:42px;height:42px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;">
+                {n:02d}
+                {conteudo_extra}
+            </div>
+            """
+        celulas_html += "</div>"
+
+    st.markdown(f'''
+    <div style="background:#ffffff;border:3px solid #000000;border-radius:10px;padding:12px;margin:10px auto;max-width:280px;text-align:center;">
+        <div style="font-weight:900;color:#000000;font-size:13px;margin-bottom:8px;text-transform:uppercase;">📋 {titulo}</div>
+        {celulas_html}
+    </div>
+    ''', unsafe_allow_html=True)
 
 
 # ==============================================================================
@@ -455,7 +463,7 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • LETRAS GIGANTES E PRETAS")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA BLINDADA")
 
 tab_cartela, tab_config, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -625,7 +633,7 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (COM CARREGAMENTO DIRETO DO SQLITE)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (BLINDADO E CORRIGIDO)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("<h1 style='font-size: 3.2rem !important; color:#000000;'>🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL</h1>", unsafe_allow_html=True)
@@ -663,7 +671,7 @@ with tab_upload:
             except Exception as e:
                 st.error(f"Erro ao ler arquivo: {e}")
 
-    # Tratamento seguro das dezenas do sorteio
+    # Tratamento seguro e rigoroso das dezenas do sorteio
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
@@ -683,26 +691,28 @@ with tab_upload:
             c11.metric("11 Pontos", f"{len(placar[11])}")
 
             st.markdown("---")
-            st.markdown("<h2 style='font-size: 2.6rem !important; color:#000000;'>🔍 INSPECIONAR NO VOLANTE 5x5</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='font-size: 2.6rem !important; color:#000000;'>🔍 INSPECIONAR NO CARTÃO 5x5</h2>", unsafe_allow_html=True)
             
             opcoes_inspecao = []
-            for qtd_pts in [15, 14, 13, 12, 11]:
-                if placar[qtd_pts]:
+            for qtd_pts in [15, 14, 13, 12, 11, 10]:
+                if placar.get(qtd_pts):
                     for idx_aposta in placar[qtd_pts]:
                         opcoes_inspecao.append(f"Aposta #{idx_aposta:04d} — {qtd_pts} acertos")
             
+            # Se não houver premiação alta, lista os primeiros jogos
             if not opcoes_inspecao:
-                for idx, item in enumerate(relatorio[:20]):
+                for idx, item in enumerate(relatorio[:50]):
                     opcoes_inspecao.append(f"Aposta #{idx+1:04d} — {item['qtd_acertos']} acertos")
 
-            escolha_inspecao = st.selectbox("Selecione a Aposta para Inspecionar no Volante:", opcoes_inspecao)
+            escolha_inspecao = st.selectbox("Selecione a Aposta para Inspecionar no Cartão:", opcoes_inspecao)
             
             if escolha_inspecao:
                 num_aposta_selecionada = int(re.findall(r"#(\d+)", escolha_inspecao)[0])
                 jogo_alvo = st.session_state.jogos_aprovados[num_aposta_selecionada - 1]
                 qtd_acertos_alvo = len(set([int(x) for x in jogo_alvo]) & set(sorteio_nums))
                 
-                render_volante_5x5_nativo(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
+                # Renderiza o cartão compacto e centralizado idêntico à foto de referência
+                render_volante_compacto_html(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
         else:
             st.warning("⚠️ Não há apostas carregadas na memória para conferir. Selecione um lote acima ou gere jogos na aba de Engenharia Reversa.")
     else:
