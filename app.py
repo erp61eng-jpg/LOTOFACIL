@@ -62,7 +62,6 @@ st.markdown('''
         border: 4px solid #000000 !important;
     }
     
-    /* MÉTRICAS DE PLACAR */
     [data-testid="stMetricValue"] {
         font-size: 3rem !important;
         font-weight: 900 !important;
@@ -390,14 +389,14 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         relatorio.append({"num_aposta": idx + 1, "jogo": jogo_int, "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
-def render_volante_compacto_html(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃO"):
-    """Renderiza o volante compacto idêntico ao modelo da foto de referência"""
+def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃO"):
     jogo_set = set([int(x) for x in dezenas_jogo])
     sorteio_set = set([int(x) for x in dezenas_sorteadas])
     
-    celulas_html = ""
+    st.markdown(f"<div style='font-weight:900; font-size:15px; margin-bottom:6px; text-transform:uppercase;'>📋 ÍCONE DO CARTÃO • {titulo}</div>", unsafe_allow_html=True)
+    
     for r in range(5):
-        celulas_html += "<div style='display:flex;justify-content:center;gap:4px;margin-bottom:4px;'>"
+        cols = st.columns(5)
         for c in range(5):
             n = r * 5 + c + 1
             acertou = (n in jogo_set) and (n in sorteio_set)
@@ -406,30 +405,22 @@ def render_volante_compacto_html(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃ
             if acertou:
                 bg = "#facc15"
                 color = "#000000"
-                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>★</div>"
+                txt_bola = f"{n:02d}<br><span style='font-size:11px; font-weight:900;'>★</span>"
             elif presente_jogo:
                 bg = "#e4e4e7"
                 color = "#000000"
-                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>&nbsp;</div>"
+                txt_bola = f"{n:02d}<br><span style='font-size:11px;'>&nbsp;</span>"
             else:
                 bg = "#ffffff"
                 color = "#71717a"
-                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>&nbsp;</div>"
+                txt_bola = f"{n:02d}<br><span style='font-size:11px;'>&nbsp;</span>"
                 
-            celulas_html += f"""
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:42px;height:42px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;">
-                {n:02d}
-                {conteudo_extra}
-            </div>
-            """
-        celulas_html += "</div>"
-
-    st.markdown(f'''
-    <div style="background:#ffffff;border:3px solid #000000;border-radius:10px;padding:12px;margin:10px auto;max-width:280px;text-align:center;">
-        <div style="font-weight:900;color:#000000;font-size:13px;margin-bottom:8px;text-transform:uppercase;">📋 {titulo}</div>
-        {celulas_html}
-    </div>
-    ''', unsafe_allow_html=True)
+            with cols[c]:
+                st.markdown(f"""
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:42px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:4px;">
+                    {txt_bola}
+                </div>
+                """, unsafe_allow_html=True)
 
 
 # ==============================================================================
@@ -463,7 +454,7 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA BLINDADA")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO")
 
 tab_cartela, tab_config, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -633,13 +624,13 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (BLINDADO E CORRIGIDO)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (LAYOUT LADO A LADO COM ÍCONE DO CARTÃO)
 # ------------------------------------------------------------------------------
 with tab_upload:
-    st.markdown("<h1 style='font-size: 3.2rem !important; color:#000000;'>🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL</h1>", unsafe_allow_html=True)
+    st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL")
     
     with st.container(border=True):
-        st.markdown("<h2 style='font-size: 2.4rem !important; color:#000000;'>📥 CARREGAR LOTE DO BANCO SQLITE</h2>", unsafe_allow_html=True)
+        st.markdown("#### 📥 CARREGAR LOTE DO BANCO SQLITE")
         lotes_disponiveis = carregar_lotes_salvos_db()
         if lotes_disponiveis:
             opcoes_lotes_tags = [f"{l[0]} ({l[1]} jogos)" for l in lotes_disponiveis]
@@ -652,46 +643,41 @@ with tab_upload:
         else:
             st.warning("⚠️ Nenhum lote salvo no banco SQLite ainda. Gere jogos na aba de Engenharia Reversa.")
 
-        st.markdown("<hr style='border: 4px solid #000000;'>", unsafe_allow_html=True)
-        st.markdown("<h2 style='font-size: 2.4rem !important; color:#000000;'>📝 DIGITAÇÃO MANUAL DO RESULTADO</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='font-size: 1.8rem !important; color:#000000;'>Digite abaixo as 15 dezenas do sorteio (separadas por espaço, ex: 01 02 03 ... 25):</p>", unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("#### 📝 DIGITAÇÃO MANUAL DO RESULTADO")
+        sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_manual")
         
-        sorteio_str = st.text_input("Dezenas do Sorteio Manual:", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_manual_gigante")
-        
-        st.markdown("<hr style='border: 4px solid #000000;'>", unsafe_allow_html=True)
-        st.markdown("<h3 style='font-size: 2rem !important; color:#000000;'>📂 Ou carregar arquivo de texto (.txt)</h3>", unsafe_allow_html=True)
-        arquivo_manual = st.file_uploader("Carregar arquivo de resultado (.txt)", type=["txt"])
+        arquivo_manual = st.file_uploader("Ou carregar arquivo de resultado (.txt)", type=["txt"])
         if arquivo_manual is not None:
             try:
                 conteudo_arq = arquivo_manual.read().decode("utf-8")
                 nums_arq = [int(x) for x in re.findall(r"\b\d+\b", conteudo_arq)]
                 if len(nums_arq) >= 15:
                     sorteio_str = " ".join([f"{n:02d}" for n in sorted(list(set(nums_arq))[:15])])
-                    st.success("✅ Arquivo manual carregado com sucesso! Verifique o campo acima.")
+                    st.success("✅ Arquivo manual carregado com sucesso!")
             except Exception as e:
                 st.error(f"Erro ao ler arquivo: {e}")
 
-    # Tratamento seguro e rigoroso das dezenas do sorteio
+    # Tratamento seguro das dezenas do sorteio
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
     if len(sorteio_nums) == 15:
         if st.session_state.jogos_aprovados:
             st.markdown("---")
-            st.markdown(f"<h2 style='font-size: 2.6rem !important; color:#000000;'>🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)</h2>", unsafe_allow_html=True)
+            st.markdown(f"#### 🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)")
             
-            # Executa a conferência garantindo que os tipos numéricos batam perfeitamente
             relatorio, placar = conferir_apostas_contra_sorteio(st.session_state.jogos_aprovados, sorteio_nums)
             
             c15, c14, c13, c12, c11 = st.columns(5)
-            c15.metric("15 Pontos", f"{len(placar[15])}")
-            c14.metric("14 Pontos", f"{len(placar[14])}")
-            c13.metric("13 Pontos", f"{len(placar[13])}")
-            c12.metric("12 Pontos", f"{len(placar[12])}")
-            c11.metric("11 Pontos", f"{len(placar[11])}")
+            c15.metric("15 P", f"{len(placar[15])}")
+            c14.metric("14 P", f"{len(placar[14])}")
+            c13.metric("13 P", f"{len(placar[13])}")
+            c12.metric("12 P", f"{len(placar[12])}")
+            c11.metric("11 P", f"{len(placar[11])}")
 
             st.markdown("---")
-            st.markdown("<h2 style='font-size: 2.6rem !important; color:#000000;'>🔍 INSPECIONAR NO CARTÃO 5x5</h2>", unsafe_allow_html=True)
+            st.markdown("#### 🔍 INSPECIONAR NO CARTÃO 5x5")
             
             opcoes_inspecao = []
             for qtd_pts in [15, 14, 13, 12, 11, 10]:
@@ -699,24 +685,27 @@ with tab_upload:
                     for idx_aposta in placar[qtd_pts]:
                         opcoes_inspecao.append(f"Aposta #{idx_aposta:04d} — {qtd_pts} acertos")
             
-            # Se não houver premiação alta, lista os primeiros jogos
             if not opcoes_inspecao:
-                for idx, item in enumerate(relatorio[:50]):
+                for idx, item in enumerate(relatorio[:100]):
                     opcoes_inspecao.append(f"Aposta #{idx+1:04d} — {item['qtd_acertos']} acertos")
 
-            escolha_inspecao = st.selectbox("Selecione a Aposta para Inspecionar no Cartão:", opcoes_inspecao)
+            # Layout Lado a Lado: Seletor à esquerda e Ícone do Cartão à direita (igualzinho à foto)
+            col_sel, col_cartao = st.columns([1.2, 1])
+            
+            with col_sel:
+                escolha_inspecao = st.selectbox("Selecione a Aposta:", opcoes_inspecao)
             
             if escolha_inspecao:
                 num_aposta_selecionada = int(re.findall(r"#(\d+)", escolha_inspecao)[0])
                 jogo_alvo = st.session_state.jogos_aprovados[num_aposta_selecionada - 1]
                 qtd_acertos_alvo = len(set([int(x) for x in jogo_alvo]) & set(sorteio_nums))
                 
-                # Renderiza o cartão compacto e centralizado idêntico à foto de referência
-                render_volante_compacto_html(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
+                with col_cartao:
+                    render_volante_5x5_nativo(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
         else:
             st.warning("⚠️ Não há apostas carregadas na memória para conferir. Selecione um lote acima ou gere jogos na aba de Engenharia Reversa.")
     else:
-        st.error(f"⚠️ Atenção: foram encontradas {len(sorteio_nums)} dezenas válidas. Por favor, certifique-se de informar exatamente **15 dezenas** únicas entre 01 e 25.")
+        st.error(f"⚠️ Atenção: foram encontradas {len(sorteio_nums)} dezenas válidas. Informe exatamente **15 dezenas** únicas entre 01 e 25.")
 
 # ------------------------------------------------------------------------------
 # ABA 4: HISTÓRICO, CICLO & GERENCIADOR SQLITE
