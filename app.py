@@ -214,7 +214,7 @@ for n in range(1, 26):
 OPCOES_QUANTIDADE = {
     "Livre (0 a 5)": [0, 5], "0 (Nenhuma)": [0, 0], "Exatamente 1": [1, 1],
     "Exatamente 2": [2, 2], "Exatamente 3": [3, 3], "Exatamente 4": [4, 4], "Exatamente 5": [5, 5],
-    "0 a 2": [0, 2], "0 a 3": [0, 3], "0 a 4": [0, 4], "0 a 5": [0, 5],
+    "1 a 2": [1, 2], "0 a 2": [0, 2], "0 a 3": [0, 3], "0 a 4": [0, 4], "0 a 5": [0, 5],
     "1 a 3": [1, 3], "1 a 4": [1, 4], "1 a 5": [1, 5],
     "2 a 3": [2, 3], "2 a 4": [2, 4], "2 a 5": [2, 5],
     "3 a 4": [3, 4], "3 a 5": [3, 5]
@@ -660,7 +660,7 @@ with tab_upload:
                 # Renderiza o volante 5x5 exato igual ao da foto
                 render_volante_5x5_nativo(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
         else:
-            st.warning("⚠️ Não hay apostas carregadas na memória para conferir. Gere ou carregue um lote na aba anterior.")
+            st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba anterior.")
     else:
         st.error(f"⚠️ Atenção: foram encontradas {len(sorteio_nums)} dezenas válidas. Por favor, certifique-se de informar exatamente **15 dezenas** únicas entre 01 e 25.")
 
