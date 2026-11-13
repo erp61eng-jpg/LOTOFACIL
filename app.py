@@ -606,13 +606,23 @@ with tab_config:
     with st.container(border=True):
         st.markdown("#### 5️⃣ RESTRIÇÕES CALIBRADORAS")
         c_p1, c_p2, c_p3, c_p4, c_p5 = st.columns(5)
-        with c_p1: primos_sel = st.multiselect("Primos:", list(range(10)), default=st.session_state.get("sel_primos", [3, 4, 5, 6]), key="sel_primos")
+        with c_p1: 
+            primos_sel = st.multiselect("Primos:", list(range(10)), default=st.session_state.get("sel_primos", [3, 4, 5, 6]), key="sel_primos")
         with c_p2:
             opcoes_par = {"8P / 7I": 8, "7P / 8I": 7, "9P / 6I": 9}
-            par_sel = st.multiselect("Pares/Ímpares:", list(opcoes_par.keys()), default=st.session_state.get("sel_pares", ["7P / 8I", "8P / 7I", "9P / 6I"]), key="sel_pares")
+            chaves_opcoes_par = list(opcoes_par.keys())
+            
+            default_salvo = st.session_state.get("sel_pares", ["7P / 8I", "8P / 7I", "9P / 6I"])
+            default_valido = [p for p in default_salvo if p in chaves_opcoes_par]
+            if not default_valido:
+                default_valido = chaves_opcoes_par.copy()
+
+            par_sel = st.multiselect("Pares/Ímpares:", chaves_opcoes_par, default=default_valido, key="sel_pares")
             pares_valores = {opcoes_par[k] for k in par_sel}
-        with c_p3: moldura_sel = st.multiselect("Moldura:", list(range(16)), default=st.session_state.get("sel_moldura", [11, 12, 13, 14, 15]), key="sel_moldura")
-        with c_p4: cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [3, 4, 5, 6]), key="sel_cruz")
+        with c_p3: 
+            moldura_sel = st.multiselect("Moldura:", list(range(16)), default=st.session_state.get("sel_moldura", [11, 12, 13, 14, 15]), key="sel_moldura")
+        with c_p4: 
+            cruz_sel = st.multiselect("Cruz Central:", list(range(10)), default=st.session_state.get("sel_cruz", [3, 4, 5, 6]), key="sel_cruz")
         with c_p5:
             val_soma_estado = st.session_state.get("sel_soma", (160, 230))
             faixa_soma = st.slider("Faixa de Soma:", 100, 300, (int(val_soma_estado[0]), int(val_soma_estado[1])), key="sel_soma")
@@ -658,13 +668,12 @@ with tab_upload:
     arquivo_enviado = st.file_uploader("Carregue seu arquivo de apostas (.txt ou .csv):", type=["txt", "csv"])
 
     if arquivo_enviado is not None:
-        # Verifica se é um arquivo novo para evitar reprocessar à toa
         if arquivo_enviado.name != st.session_state.get("nome_arquivo_carregado", ""):
             conteudo = arquivo_enviado.read()
             jogos_carregados, invalidos = processar_arquivo_upload(conteudo)
             st.session_state.jogos_upload = jogos_carregados
             st.session_state.nome_arquivo_carregado = arquivo_enviado.name
-            st.session_state.jogos_filtrados_upload = [] # Reseta o filtro do lote anterior
+            st.session_state.jogos_filtrados_upload = []
             if invalidos > 0:
                 st.warning(f"⚠️ {invalidos} linha(s) ignoradas por formato inválido.")
             st.success(f"Arquivo '{arquivo_enviado.name}' carregado e salvo na memória com sucesso!")
