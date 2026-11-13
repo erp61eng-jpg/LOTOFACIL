@@ -606,7 +606,7 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & VOLANTE VISUAL (SEM GRÁFICO)
+# ABA 3: CONFERÊNCIA & VOLANTE VISUAL (ROBUSTA E CORRIGIDA)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & VOLANTE VISUAL")
@@ -625,12 +625,14 @@ with tab_upload:
                     conteudo_arq = arquivo_manual.read().decode("utf-8")
                     nums_arq = [int(x) for x in re.findall(r"\b\d+\b", conteudo_arq)]
                     if len(nums_arq) >= 15:
-                        sorteio_str = " ".join([f"{n:02d}" for n in sorted(nums_arq[:15])])
+                        sorteio_str = " ".join([f"{n:02d}" for n in sorted(list(set(nums_arq))[:15])])
                         st.success("✅ Arquivo manual carregado com sucesso!")
                 except Exception as e:
                     st.error(f"Erro ao ler arquivo: {e}")
 
-    sorteio_nums = sorted([int(x) for x in re.findall(r"\b\d+\b", sorteio_str) if 1 <= int(x) <= 25])
+    # Tratamento seguro e rigoroso das 15 dezenas do sorteio
+    raw_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
+    sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
     if len(sorteio_nums) == 15:
         if st.session_state.jogos_aprovados:
@@ -669,7 +671,7 @@ with tab_upload:
         else:
             st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba anterior.")
     else:
-        st.error("⚠️ Por favor, informe exatamente 15 dezenas válidas (entre 01 e 25).")
+        st.error(f"⚠️ Atenção: foram encontradas {len(sorteio_nums)} dezenas válidas. Por favor, certifique-se de informar exatamente **15 dezenas** únicas entre 01 e 25.")
 
 # ------------------------------------------------------------------------------
 # ABA 4: HISTÓRICO, CICLO & GERENCIADOR SQLITE
