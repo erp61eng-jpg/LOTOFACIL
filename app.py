@@ -6,8 +6,8 @@ from collections import Counter
 import math
 import time
 import re
-import json
 import os
+import sqlite3
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -76,7 +76,87 @@ st.markdown('''
 
 
 # ==============================================================================
-# 🛠️ CONSTANTES & BANCO DE DADOS LOCAL
+# 🛠️ BANCO DE DADOS SQLITE & PERSISTÊNCIA
+# ==============================================================================
+NOME_BANCO = "lotofacil_blindado.db"
+
+def inicializar_banco():
+    conn = sqlite3.connect(NOME_BANCO)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sorteios (
+            concurso INTEGER PRIMARY KEY,
+            dezenas TEXT NOT NULL,
+            data_sorteio TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS jogos_aprovados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lote_tag TEXT,
+            jogo TEXT NOT NULL,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def salvar_sorteio_db(concurso, dezenas):
+    conn = sqlite3.connect(NOME_BANCO)
+    cursor = conn.cursor()
+    dezenas_str = " ".join([f"{n:02d}" for n in sorted(dezenas)])
+    cursor.execute("INSERT OR REPLACE INTO sorteios (concurso, dezenas) VALUES (?, ?)", (concurso, dezenas_str))
+    conn.commit()
+    conn.close()
+
+def carregar_historico_db():
+    conn = sqlite3.connect(NOME_BANCO)
+    cursor = conn.cursor()
+    cursor.execute("SELECT concurso, dezenas FROM sorteios ORDER BY concurso ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    historico = []
+    for row in rows:
+        nums = [int(x) for x in row[1].split()]
+        if len(nums) == 15:
+            historico.append(nums)
+    return historico
+
+def salvar_jogos_aprovados_db(lista_jogos, lote_tag="Padrao"):
+    conn = sqlite3.connect(NOME_BANCO)
+    cursor = conn.cursor()
+    for jogo in lista_jogos:
+        jogo_str = " ".join([f"{n:02d}" for n in sorted(jogo)])
+        cursor.execute("INSERT INTO jogos_aprovados (lote_tag, jogo) VALUES (?, ?)", (lote_tag, jogo_str))
+    conn.commit()
+    conn.close()
+
+def carregar_lotes_salvos_db():
+    conn = sqlite3.connect(NOME_BANCO)
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT lote_tag, COUNT(*), MIN(criado_em) FROM jogos_aprovados GROUP BY lote_tag ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def carregar_jogos_por_lote_db(lote_tag):
+    conn = sqlite3.connect(NOME_BANCO)
+    cursor = conn.cursor()
+    cursor.execute("SELECT jogo FROM jogos_aprovados WHERE lote_tag = ?", (lote_tag,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [[int(x) for x in row[0].split()] for row in rows]
+
+def deletar_lote_db(lote_tag):
+    conn = sqlite3.connect(NOME_BANCO)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM jogos_aprovados WHERE lote_tag = ?", (lote_tag,))
+    conn.commit()
+    conn.close()
+
+
+# ==============================================================================
+# CONSTANTES & CONFIGURAÇÕES
 # ==============================================================================
 ARQUIVO_NOTAS_LOCAL = "meu_bloco_de_notas.txt"
 
@@ -107,7 +187,6 @@ MOLDURA_SET = (
     {r * 5 + 5 for r in range(5)}
 )
 CRUZ_CENTRAL_SET = {3, 8, 11, 12, 13, 14, 15, 18, 23}
-
 JOGO_BASE_PADRAO = [3, 5, 7, 8, 11, 13, 14, 15, 18, 19, 20, 21, 22, 23, 25]
 
 HEADERS_CAIXA = {
@@ -201,7 +280,6 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=25):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # RESTRIÇÃO CIRÚRGICA EXATA DE +-1 PONTO
     def faixa_estrita_mais_menos_1(val):
         return [max(0, val - 1), min(5, val + 1)]
 
@@ -284,12 +362,22 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         relatorio.append({"num_aposta": idx + 1, "jogo": sorted(jogo), "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
-def render_html_seguro(conteudo_html, altura=380):
-    try:
-        if hasattr(st, "html"): st.html(conteudo_html)
-        else: components.html(conteudo_html, height=altura, scrolling=False)
-    except Exception:
-        components.html(conteudo_html, height=altura, scrolling=False)
+def calcular_distribuicao_faixas(dezenas):
+    """Calcula a contagem de dezenas nas faixas solicitadas (01-05, 06-10, 11-15, 16-20, 21-25)"""
+    faixas = {
+        "01 a 05": 0,
+        "06 a 10": 0,
+        "11 a 15": 0,
+        "16 a 20": 0,
+        "21 a 25": 0
+    }
+    for n in dezenas:
+        if 1 <= n <= 5: faixas["01 a 05"] += 1
+        elif 6 <= n <= 10: faixas["06 a 10"] += 1
+        elif 11 <= n <= 15: faixas["11 a 15"] += 1
+        elif 16 <= n <= 20: faixas["16 a 20"] += 1
+        elif 21 <= n <= 25: faixas["21 a 25"] += 1
+    return faixas
 
 def render_cartao_sorteio_html(dezenas, titulo="CARTÃO OFICIAL DO SORTEIO"):
     bolas_html = "".join([f"<span style='display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#facc15;color:#000000;font-weight:900;font-size:22px;border-radius:50%;margin:0 4px;border:3px solid #000000;font-family:monospace;'>{n:02d}</span>" for n in dezenas])
@@ -297,12 +385,20 @@ def render_cartao_sorteio_html(dezenas, titulo="CARTÃO OFICIAL DO SORTEIO"):
 
 
 # ==============================================================================
-# ESTADO DA SESSÃO
+# INICIALIZAÇÃO DO ESTADO DA SESSÃO E BANCO
 # ==============================================================================
-if "historico" not in st.session_state:
-    st.session_state.historico = [JOGO_BASE_PADRAO]
+inicializar_banco()
 
-if "jogos_aprovados" not in st.session_state: st.session_state.jogos_aprovados = []
+if "historico" not in st.session_state:
+    hist_db = carregar_historico_db()
+    st.session_state.historico = hist_db if hist_db else [JOGO_BASE_PADRAO]
+
+if "jogos_aprovados" not in st.session_state:
+    lotes = carregar_lotes_salvos_db()
+    if lotes:
+        st.session_state.jogos_aprovados = carregar_jogos_por_lote_db(lotes[0][0])
+    else:
+        st.session_state.jogos_aprovados = []
 
 if "input_dezenas_texto" not in st.session_state:
     st.session_state.input_dezenas_texto = " ".join([f"{n:02d}" for n in JOGO_BASE_PADRAO])
@@ -319,13 +415,13 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA MANUAL & GRÁFICO")
 
 tab_cartela, tab_config, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
     "🎛️ Filtros & Engenharia Reversa",
-    "📥 Upload & Conferência",
-    "📊 Histórico & Ciclo",
+    "📥 Conferência & Arquivo Manual",
+    "📊 Histórico, Ciclo & SQLite",
     "📝 Bloco de Notas"
 ])
 
@@ -374,7 +470,7 @@ with tab_cartela:
                     st.rerun()
 
 # ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (COM LINHAS E COLUNAS MANUAIS)
+# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
 # ------------------------------------------------------------------------------
 with tab_config:
     st.markdown("### 🎛️ ENGENHARIA REVERSA & RESTRIÇÕES DETALHADAS (±1 PONTO)")
@@ -460,7 +556,9 @@ with tab_config:
 
         faixa_soma_cfg = st.slider("Faixa de Soma Total:", 100, 300, tuple(cfg_ativo["soma"]), key="sel_soma")
 
-    if st.button("🚀 GERAR JOGOS COM ESTAS RESTRIÇÕES", type="primary", use_container_width=True):
+    tag_lote_input = st.text_input("Etiqueta (Tag) para salvar este lote no banco SQLite:", value=f"Lote_{time.strftime('%d%m_%H%M')}")
+
+    if st.button("🚀 GERAR JOGOS E SALVAR NO SQLITE", type="primary", use_container_width=True):
         cfg_atualizado = {
             "linhas": limites_linhas,
             "colunas": limites_colunas,
@@ -475,53 +573,115 @@ with tab_config:
         with st.spinner("🛠️ Processando combinações..."):
             aprovados = executar_varredura_pool(st.session_state.pool_trabalho, cfg_atualizado, st.empty(), st.empty())
             st.session_state.jogos_aprovados = aprovados
-            st.success(f"✅ Sucesso! {len(aprovados):,} apostas geradas.")
+            if aprovados:
+                salvar_jogos_aprovados_db(aprovados, lote_tag=tag_lote_input)
+                st.success(f"✅ Sucesso! {len(aprovados):,} apostas geradas e salvas na tabela SQLite.")
+            else:
+                st.warning("⚠️ Nenhuma aposta passou pelos filtros rigorosos.")
             st.rerun()
 
     if st.session_state.jogos_aprovados:
-        st.markdown(f"<div class='progresso-gigante'>TOTAL APROVADO: {len(st.session_state.jogos_aprovados):,} APOSTAS</div>", unsafe_allow_html=True)
-        st.download_button("📥 BAIXAR JOGOS APROVADOS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
+        st.markdown(f"<div class='progresso-gigante'>TOTAL NA MEMÓRIA: {len(st.session_state.jogos_aprovados):,} APOSTAS</div>", unsafe_allow_html=True)
+        st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: UPLOAD & CONFERÊNCIA
+# ABA 3: CONFERÊNCIA & ARQUIVO MANUAL
 # ------------------------------------------------------------------------------
 with tab_upload:
-    st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS")
-    if st.session_state.jogos_aprovados:
-        st.info(f"Há {len(st.session_state.jogos_aprovados):,} apostas na memória.")
-        sorteio_str = st.text_input("15 Dezenas do Sorteio (espaços):", "03 05 07 08 11 13 14 15 18 19 20 21 22 23 25")
-        sorteio_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
+    st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & ARQUIVO MANUAL")
+    
+    with st.container(border=True):
+        st.markdown("#### 📂 ENTRADA MANUAL DE RESULTADO")
+        st.caption("Digite as 15 dezenas do resultado manualmente ou carregue um arquivo de texto (.txt) contendo o resultado.")
         
-        if len(sorteio_nums) == 15 and st.button("Conferir Jogos Agora", type="primary"):
-            render_cartao_sorteio_html(sorteio_nums, titulo="CONCURSO CONFERIDO")
+        col_m1, col_m2 = st.columns([2, 1])
+        with col_m1:
+            sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25")
+        with col_m2:
+            arquivo_manual = st.file_uploader("Ou carregar arquivo de resultado (.txt)", type=["txt"])
+            if arquivo_manual is not None:
+                try:
+                    conteudo_arq = arquivo_manual.read().decode("utf-8")
+                    nums_arq = [int(x) for x in re.findall(r"\b\d+\b", conteudo_arq)]
+                    if len(nums_arq) >= 15:
+                        sorteio_str = " ".join([f"{n:02d}" for n in sorted(nums_arq[:15])])
+                        st.success("✅ Arquivo manual carregado com sucesso!")
+                except Exception as e:
+                    st.error(f"Erro ao ler arquivo: {e}")
+
+    sorteio_nums = sorted([int(x) for x in re.findall(r"\b\d+\b", sorteio_str) if 1 <= int(x) <= 25])
+
+    if len(sorteio_nums) == 15:
+        render_cartao_sorteio_html(sorteio_nums, titulo="RESULTADO CONFERIDO (MATRIZ ATUAL)")
+        
+        # GRÁFICO DE FAIXAS (01-05, 06-10, 11-15, 16-20, 21-25)
+        st.markdown("---")
+        st.markdown("#### 📊 GRÁFICO DE DISTRIBUIÇÃO POR FAIXAS DE DEZENAS")
+        faixas_dist = calcular_distribuicao_faixas(sorteio_nums)
+        st.bar_chart(faixas_dist)
+
+        if st.session_state.jogos_aprovados:
+            st.markdown("---")
+            st.markdown(f"#### 🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)")
             relatorio, placar = conferir_apostas_contra_sorteio(st.session_state.jogos_aprovados, sorteio_nums)
             
             c15, c14, c13, c12, c11 = st.columns(5)
-            c15.metric("15 P", f"{len(placar[15])}")
-            c14.metric("14 P", f"{len(placar[14])}")
-            c13.metric("13 P", f"{len(placar[13])}")
-            c12.metric("12 P", f"{len(placar[12])}")
-            c11.metric("11 P", f"{len(placar[11])}")
+            c15.metric("15 Pontos", f"{len(placar[15])}")
+            c14.metric("14 Pontos", f"{len(placar[14])}")
+            c13.metric("13 Pontos", f"{len(placar[13])}")
+            c12.metric("12 Pontos", f"{len(placar[12])}")
+            c11.metric("11 Pontos", f"{len(placar[11])}")
+        else:
+            st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba de Filtros.")
     else:
-        st.warning("Gere seus jogos na aba anterior para habilitar a conferência.")
+        st.error("⚠️ Por favor, informe exatamente 15 dezenas válidas (entre 01 e 25) para o sorteio.")
 
 # ------------------------------------------------------------------------------
-# ABA 4: HISTÓRICO & CICLO
+# ABA 4: HISTÓRICO, CICLO & GERENCIADOR SQLITE
 # ------------------------------------------------------------------------------
 with tab_historico:
-    st.markdown("### 📊 HISTÓRICO & CICLO DA LOTOFÁCIL")
-    if st.button("🌐 SINCRONIZAR COM A CAIXA", type="primary", use_container_width=True):
+    st.markdown("### 📊 HISTÓRICO DA CAIXA & GERENCIADOR DE LOTES SALVOS")
+    
+    if st.button("🌐 SINCRONIZAR ÚLTIMO CONCURSO COM A CAIXA", type="primary", use_container_width=True):
         try:
             r = requests.get("https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil", headers=HEADERS_CAIXA, timeout=10, verify=False)
             if r.status_code == 200:
                 ult = r.json()
+                num_concurso = ult.get("numero")
                 dezenas = sorted([int(x) for x in ult.get("listaDezenas", [])])
-                if len(dezenas) == 15 and dezenas not in st.session_state.historico:
-                    st.session_state.historico.append(dezenas)
-                    st.success(f"Concurso #{ult.get('numero')} sincronizado!")
+                if len(dezenas) == 15:
+                    salvar_sorteio_db(num_concurso, dezenas)
+                    st.session_state.historico = carregar_historico_db()
+                    st.success(f"Concurso #{num_concurso} sincronizado e salvo no SQLite com sucesso!")
                     st.rerun()
         except Exception as e:
-            st.error(f"Erro: {e}")
+            st.error(f"Erro ao conectar com a API da Caixa: {e}")
+
+    st.markdown("---")
+    st.markdown("#### 💾 GERENCIAR LOTES SALVOS NO BANCO SQLITE")
+    lotes_db = carregar_lotes_salvos_db()
+    
+    if lotes_db:
+        for tag, qtd, data_criacao in lotes_db:
+            with st.container(border=True):
+                col_l1, col_l2, col_l3, col_l4 = st.columns([3, 2, 2, 2])
+                with col_l1:
+                    st.markdown(f"**Lote:** `{tag}`")
+                    st.caption(f"Salvo em: {data_criacao}")
+                with col_l2:
+                    st.markdown(f"**Jogos:** `{qtd:,}`")
+                with col_l3:
+                    if st.button("📂 Carregar para Memória", key=f"carregar_{tag}", use_container_width=True):
+                        st.session_state.jogos_aprovados = carregar_jogos_por_lote_db(tag)
+                        st.success(f"Lote '{tag}' ({qtd} jogos) carregado para uso!")
+                        st.rerun()
+                with col_l4:
+                    if st.button("🗑️ Excluir Lote", key=f"deletar_{tag}", use_container_width=True):
+                        deletar_lote_db(tag)
+                        st.warning(f"Lote '{tag}' removido do SQLite.")
+                        st.rerun()
+    else:
+        st.info("Nenhum lote de apostas foi salvo no banco de dados ainda.")
 
 # ------------------------------------------------------------------------------
 # ABA 5: BLOCO DE NOTAS
