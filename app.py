@@ -588,7 +588,7 @@ with tab_config:
                 salvar_jogos_aprovados_db(aprovados, lote_tag=tag_lote_input)
                 st.success(f"✅ Sucesso! {len(aprovados):,} apostas geradas e salvas na tabela SQLite.")
             else:
-                st.warning("⚠️ Nenhuma aposta passou pelos filtros rigorosos.")
+                st.warning("⚠️ Nenhuma aposta passou pelos filtros rigorosos. Tente flexibilizar os limites nas caixas acima.")
             st.rerun()
 
     if st.session_state.jogos_aprovados:
