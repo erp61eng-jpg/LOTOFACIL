@@ -16,7 +16,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # CONFIGURAÇÃO DE PÁGINA (STREAMLIT)
 # ==============================================================================
 st.set_page_config(
-    page_title="LOTOFÁCIL25 - Painel Avançado",
+    page_title="LOTOFÁCIL25 - Painel Blindado Completo",
     page_icon="🍀",
     layout="wide"
 )
@@ -133,6 +133,15 @@ for n in range(1, 26):
         "is_cruz": CRUZ_LOOKUP[n], "is_fib": n in FIBONACCI_LOTOFACIL
     }
 
+OPCOES_QUANTIDADE = {
+    "Livre (0 a 5)": [0, 5], "0 (Nenhuma)": [0, 0], "Exatamente 1": [1, 1],
+    "Exatamente 2": [2, 2], "Exatamente 3": [3, 3], "Exatamente 4": [4, 4], "Exatamente 5": [5, 5],
+    "0 a 2": [0, 2], "0 a 3": [0, 3], "0 a 4": [0, 4], "0 a 5": [0, 5],
+    "1 a 3": [1, 3], "1 a 4": [1, 4], "1 a 5": [1, 5],
+    "2 a 3": [2, 3], "2 a 4": [2, 4], "2 a 5": [2, 5],
+    "3 a 4": [3, 4], "3 a 5": [3, 5]
+}
+
 PRESETS_PADRAO = {
     "JOGO_BASE_COM_FOLGA": {
         "linhas": [[0, 5], [0, 5], [0, 5], [0, 5], [0, 5]],
@@ -143,7 +152,7 @@ PRESETS_PADRAO = {
         "pares": [7, 8, 9, 6, 10],
         "moldura": list(range(7, 16)),
         "cruz": list(range(2, 9)),
-        "soma": [140, 250]
+        "soma": [130, 260]
     }
 }
 
@@ -243,7 +252,7 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=50):
         "diag_cresc": [faixa_folga(q) for q in dc_cnt],
         "diag_decresc": [faixa_folga(q) for q in dd_cnt],
         "primos": list(range(max(1, primos_total - 2), min(10, primos_total + 3))),
-        "pares": list(range(max(4, pares_jogo - 2), min(12, pares_jogo + 3))),
+        "pares": [7, 8, 9, 6, 10],
         "moldura": list(range(max(5, moldura_total - 3), min(16, moldura_total + 4))),
         "cruz": list(range(max(1, cruz_total - 3), min(10, cruz_total + 4))),
         "soma": [max(130, soma_total - margem_soma), min(260, soma_total + margem_soma)]
@@ -405,13 +414,13 @@ with tab_cartela:
 # ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
 # ------------------------------------------------------------------------------
 with tab_config:
-    st.markdown("### 🎛️ ENGENHARIA REVERSA AUTOMÁTICA")
+    st.markdown("### 🎛️ ENGENHARIA REVERSA E RESTRIÇÕES")
     with st.container(border=True):
-        st.caption("Insira suas 15 dezenas de base. O sistema calibrará as restrições com folga ideal para gerar seus jogos.")
+        st.caption("Insira suas 15 dezenas de base. O sistema extrairá a estrutura e calibrará os seletores.")
         txt_base = st.text_area("Suas 15 Dezenas:", value=st.session_state.input_dezenas_texto, height=75)
         st.session_state.input_dezenas_texto = txt_base
 
-        if st.button("⚡ EXTRAIR FILTROS E GERAR APOSTAS", type="primary", use_container_width=True):
+        if st.button("⚡ EXTRAIR E CALIBRAR FILTROS", type="primary", use_container_width=True):
             nums = [int(x) for x in re.findall(r"\b\d+\b", txt_base)]
             nums_limpos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
             if len(nums_limpos) < 15:
@@ -420,14 +429,37 @@ with tab_config:
                 cfg_gerada = extrair_filtros_de_jogo(nums_limpos[:15])
                 st.session_state["cfg_ativa"] = cfg_gerada
                 st.session_state.pool_trabalho = set(nums_limpos[:15])
-                
-                with st.spinner("🛠️ Processando combinações..."):
-                    aprovados = executar_varredura_pool(st.session_state.pool_trabalho, cfg_gerada, st.empty(), st.empty())
-                    st.session_state.jogos_aprovados = aprovados
-                    st.success(f"✅ Sucesso! {len(aprovados):,} apostas geradas.")
-                    st.rerun()
+                st.success("✅ Filtros extraídos e calibrados com sucesso!")
+                st.rerun()
 
     cfg_ativo = st.session_state.get("cfg_ativa", extrair_filtros_de_jogo(JOGO_BASE_PADRAO))
+
+    with st.container(border=True):
+        st.markdown("#### ⚙️ AJUSTE MANUAL DE RESTRIÇÕES")
+        
+        c_p1, c_p2, c_p3 = st.columns(3)
+        with c_p1:
+            primos_sel = st.multiselect("Quantidade de Primos:", list(range(10)), default=cfg_ativo["primos"], key="sel_primos")
+        with c_p2:
+            pares_sel = st.multiselect("Quantidade de Pares:", list(range(16)), default=cfg_ativo["pares"], key="sel_pares")
+        with c_p3:
+            moldura_sel = st.multiselect("Quantidade na Moldura:", list(range(16)), default=cfg_ativo["moldura"], key="sel_moldura")
+
+        faixa_soma_cfg = st.slider("Faixa de Soma Total:", 100, 300, tuple(cfg_ativo["soma"]), key="sel_soma")
+
+    if st.button("🚀 GERAR JOGOS COM ESTAS RESTRIÇÕES", type="primary", use_container_width=True):
+        cfg_atualizado = cfg_ativo.copy()
+        cfg_atualizado["primos"] = primos_sel
+        cfg_atualizado["pares"] = pares_sel
+        cfg_atualizado["moldura"] = moldura_sel
+        cfg_atualizado["soma"] = list(faixa_soma_cfg)
+        
+        with st.spinner("🛠️ Processando combinações..."):
+            aprovados = executar_varredura_pool(st.session_state.pool_trabalho, cfg_atualizado, st.empty(), st.empty())
+            st.session_state.jogos_aprovados = aprovados
+            st.success(f"✅ Sucesso! {len(aprovados):,} apostas geradas.")
+            st.rerun()
+
     if st.session_state.jogos_aprovados:
         st.markdown(f"<div class='progresso-gigante'>TOTAL APROVADO: {len(st.session_state.jogos_aprovados):,} APOSTAS</div>", unsafe_allow_html=True)
         st.download_button("📥 BAIXAR JOGOS APROVADOS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
