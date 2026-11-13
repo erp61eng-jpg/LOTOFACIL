@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE PRETO E BRANCO)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE E ALINHAMENTO PERFEITO)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -63,12 +63,12 @@ st.markdown('''
     }
     
     [data-testid="stMetricValue"] {
-        font-size: 3rem !important;
+        font-size: 2.8rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 1.4rem !important;
+        font-size: 1.3rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
@@ -442,6 +442,9 @@ if "jogos_aprovados" not in st.session_state:
 if "input_dezenas_texto" not in st.session_state:
     st.session_state.input_dezenas_texto = " ".join([f"{n:02d}" for n in JOGO_BASE_PADRAO])
 
+if "sorteio_manual" not in st.session_state:
+    st.session_state.sorteio_manual = "01 02 03 04 05 06 07 08 09 10 11 12 13 14 15"
+
 dados_calor = calcular_metricas_elliott(st.session_state.historico)
 ranking_elliott = sorted(dados_calor.values(), key=lambda x: x["score"], reverse=True)
 analise_elite = extrair_analise_elite(dados_calor)
@@ -624,7 +627,7 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (COM PAINEL DE VALIDAÇÃO DE 15 DEZENAS)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (ALINHADO E DINÂMICO)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL")
@@ -645,7 +648,10 @@ with tab_upload:
 
         st.markdown("---")
         st.markdown("#### 📝 DIGITAÇÃO MANUAL DO RESULTADO")
-        sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_manual")
+        
+        # Campo dinâmico que lê perfeitamente o que o usuário digita
+        sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value=st.session_state.sorteio_manual, key="input_sorteio_manual_dinamico")
+        st.session_state.sorteio_manual = sorteio_str
         
         arquivo_manual = st.file_uploader("Ou carregar arquivo de resultado (.txt)", type=["txt"])
         if arquivo_manual is not None:
@@ -653,16 +659,16 @@ with tab_upload:
                 conteudo_arq = arquivo_manual.read().decode("utf-8")
                 nums_arq = [int(x) for x in re.findall(r"\b\d+\b", conteudo_arq)]
                 if len(nums_arq) >= 15:
-                    sorteio_str = " ".join([f"{n:02d}" for n in sorted(list(set(nums_arq))[:15])])
-                    st.success("✅ Arquivo manual carregado com sucesso!")
+                    st.session_state.sorteio_manual = " ".join([f"{n:02d}" for n in sorted(list(set(nums_arq))[:15])])
+                    st.success("✅ Arquivo manual carregado com sucesso! Atualize a página se necessário.")
+                    st.rerun()
             except Exception as e:
                 st.error(f"Erro ao ler arquivo: {e}")
 
-    # Tratamento seguro e rigoroso das dezenas do sorteio
-    raw_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
+    # Tratamento rigoroso das dezenas do sorteio
+    raw_nums = [int(x) for x in re.findall(r"\b\d+\b", st.session_state.sorteio_manual)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
-    # Exibe em tempo real o que o sistema leu para garantir que são 15
     st.info(f"🔍 **Dezenas do Sorteio Reconhecidas pelo Sistema ({len(sorteio_nums)}/15):** `{' '.join([f'{n:02d}' for n in sorteio_nums])}`")
 
     if len(sorteio_nums) == 15:
@@ -692,10 +698,11 @@ with tab_upload:
                 for idx, item in enumerate(relatorio[:100]):
                     opcoes_inspecao.append(f"Aposta #{idx+1:04d} — {item['qtd_acertos']} acertos")
 
+            # Layout Lado a Lado perfeitamente alinhado
             col_sel, col_cartao = st.columns([1.2, 1])
             
             with col_sel:
-                escolha_inspecao = st.selectbox("Selecione a Aposta:", opcoes_inspecao)
+                escolha_inspecao = st.selectbox("Selecione a Aposta:", opcoes_inspecao, key="select_inspecao_aposta")
             
             if escolha_inspecao:
                 num_aposta_selecionada = int(re.findall(r"#(\d+)", escolha_inspecao)[0])
@@ -707,7 +714,7 @@ with tab_upload:
         else:
             st.warning("⚠️ Não há apostas carregadas na memória para conferir. Selecione um lote acima ou gere jogos na aba de Engenharia Reversa.")
     else:
-        st.error(f"⚠️ Atenção: foram encontradas apenas **{len(sorteio_nums)}** dezenas válidas. O sorteio da Lotofácil exige exatamente **15 dezenas** únicas entre 01 e 25.")
+        st.error(f"⚠️ Atenção: foram encontradas apenas **{len(sorteio_nums)}** dezenas válidas. O sorteio exige exatamente **15 dezenas** únicas entre 01 e 25.")
 
 # ------------------------------------------------------------------------------
 # ABA 4: HISTÓRICO, CICLO & GERENCIADOR SQLITE
