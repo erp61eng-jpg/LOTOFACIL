@@ -362,23 +362,6 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         relatorio.append({"num_aposta": idx + 1, "jogo": sorted(jogo), "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
-def calcular_distribuicao_faixas(dezenas):
-    """Calcula a contagem de dezenas nas faixas solicitadas (01-05, 06-10, 11-15, 16-20, 21-25)"""
-    faixas = {
-        "01 a 05": 0,
-        "06 a 10": 0,
-        "11 a 15": 0,
-        "16 a 20": 0,
-        "21 a 25": 0
-    }
-    for n in dezenas:
-        if 1 <= n <= 5: faixas["01 a 05"] += 1
-        elif 6 <= n <= 10: faixas["06 a 10"] += 1
-        elif 11 <= n <= 15: faixas["11 a 15"] += 1
-        elif 16 <= n <= 20: faixas["16 a 20"] += 1
-        elif 21 <= n <= 25: faixas["21 a 25"] += 1
-    return faixas
-
 def render_cartao_sorteio_html(dezenas, titulo="CARTÃO OFICIAL DO SORTEIO"):
     bolas_html = "".join([f"<span style='display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#facc15;color:#000000;font-weight:900;font-size:22px;border-radius:50%;margin:0 4px;border:3px solid #000000;font-family:monospace;'>{n:02d}</span>" for n in dezenas])
     st.markdown(f'''<div style="background:#ffffff;border:4px solid #000000;border-radius:12px;padding:14px;margin:8px 0;text-align:center;"><div style="font-weight:900;color:#000000;font-size:18px;margin-bottom:8px;text-transform:uppercase;">🏆 {titulo}</div><div style="display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px;">{bolas_html}</div></div>''', unsafe_allow_html=True)
@@ -591,14 +574,14 @@ with tab_upload:
     st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & ARQUIVO MANUAL")
     
     with st.container(border=True):
-        st.markdown("#### 📂 ENTRADA MANUAL DE RESULTADO")
-        st.caption("Digite as 15 dezenas do resultado manualmente ou carregue um arquivo de texto (.txt) contendo o resultado.")
+        st.markdown("#### 📂 ENTRADA DE RESULTADO (MANUAL OU ARQUIVO)")
+        st.caption("Digite as 15 dezenas do sorteio abaixo ou carregue um arquivo de texto (.txt) contendo o resultado.")
         
         col_m1, col_m2 = st.columns([2, 1])
         with col_m1:
-            sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25")
+            sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_conferencia")
         with col_m2:
-            arquivo_manual = st.file_uploader("Ou carregar arquivo de resultado (.txt)", type=["txt"])
+            arquivo_manual = st.file_uploader("Carregar arquivo de resultado (.txt)", type=["txt"])
             if arquivo_manual is not None:
                 try:
                     conteudo_arq = arquivo_manual.read().decode("utf-8")
@@ -612,14 +595,23 @@ with tab_upload:
     sorteio_nums = sorted([int(x) for x in re.findall(r"\b\d+\b", sorteio_str) if 1 <= int(x) <= 25])
 
     if len(sorteio_nums) == 15:
-        render_cartao_sorteio_html(sorteio_nums, titulo="RESULTADO CONFERIDO (MATRIZ ATUAL)")
+        render_cartao_sorteio_html(sorteio_nums, titulo="RESULTADO CONFERIDO")
         
-        # GRÁFICO DE FAIXAS (01-05, 06-10, 11-15, 16-20, 21-25)
+        # DISTRIBUIÇÃO EXATA POR FAIXAS (01-05, 06-10, 11-15, 16-20, 21-25)
         st.markdown("---")
         st.markdown("#### 📊 GRÁFICO DE DISTRIBUIÇÃO POR FAIXAS DE DEZENAS")
-        faixas_dist = calcular_distribuicao_faixas(sorteio_nums)
+        
+        faixas_dist = {
+            "01 a 05": sum(1 for n in sorteio_nums if 1 <= n <= 5),
+            "06 a 10": sum(1 for n in sorteio_nums if 6 <= n <= 10),
+            "11 a 15": sum(1 for n in sorteio_nums if 11 <= n <= 15),
+            "16 a 20": sum(1 for n in sorteio_nums if 16 <= n <= 20),
+            "21 a 25": sum(1 for n in sorteio_nums if 21 <= n <= 25)
+        }
+        
         st.bar_chart(faixas_dist)
 
+        # PLACAR DE CONFERÊNCIA DOS JOGOS DA MEMÓRIA
         if st.session_state.jogos_aprovados:
             st.markdown("---")
             st.markdown(f"#### 🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)")
@@ -632,9 +624,9 @@ with tab_upload:
             c12.metric("12 Pontos", f"{len(placar[12])}")
             c11.metric("11 Pontos", f"{len(placar[11])}")
         else:
-            st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba de Filtros.")
+            st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba de Engenharia Reversa.")
     else:
-        st.error("⚠️ Por favor, informe exatamente 15 dezenas válidas (entre 01 e 25) para o sorteio.")
+        st.error("⚠️ Por favor, informe exatamente 15 dezenas válidas (entre 01 e 25).")
 
 # ------------------------------------------------------------------------------
 # ABA 4: HISTÓRICO, CICLO & GERENCIADOR SQLITE
