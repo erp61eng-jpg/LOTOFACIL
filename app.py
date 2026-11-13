@@ -624,7 +624,7 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (LAYOUT LADO A LADO COM ÍCONE DO CARTÃO)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (COM PAINEL DE VALIDAÇÃO DE 15 DEZENAS)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL")
@@ -658,9 +658,12 @@ with tab_upload:
             except Exception as e:
                 st.error(f"Erro ao ler arquivo: {e}")
 
-    # Tratamento seguro das dezenas do sorteio
+    # Tratamento seguro e rigoroso das dezenas do sorteio
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
+
+    # Exibe em tempo real o que o sistema leu para garantir que são 15
+    st.info(f"🔍 **Dezenas do Sorteio Reconhecidas pelo Sistema ({len(sorteio_nums)}/15):** `{' '.join([f'{n:02d}' for n in sorteio_nums])}`")
 
     if len(sorteio_nums) == 15:
         if st.session_state.jogos_aprovados:
@@ -689,7 +692,6 @@ with tab_upload:
                 for idx, item in enumerate(relatorio[:100]):
                     opcoes_inspecao.append(f"Aposta #{idx+1:04d} — {item['qtd_acertos']} acertos")
 
-            # Layout Lado a Lado: Seletor à esquerda e Ícone do Cartão à direita (igualzinho à foto)
             col_sel, col_cartao = st.columns([1.2, 1])
             
             with col_sel:
@@ -705,7 +707,7 @@ with tab_upload:
         else:
             st.warning("⚠️ Não há apostas carregadas na memória para conferir. Selecione um lote acima ou gere jogos na aba de Engenharia Reversa.")
     else:
-        st.error(f"⚠️ Atenção: foram encontradas {len(sorteio_nums)} dezenas válidas. Informe exatamente **15 dezenas** únicas entre 01 e 25.")
+        st.error(f"⚠️ Atenção: foram encontradas apenas **{len(sorteio_nums)}** dezenas válidas. O sorteio da Lotofácil exige exatamente **15 dezenas** únicas entre 01 e 25.")
 
 # ------------------------------------------------------------------------------
 # ABA 4: HISTÓRICO, CICLO & GERENCIADOR SQLITE
@@ -726,7 +728,7 @@ with tab_historico:
                     st.success(f"Concurso #{num_concurso} sincronizado e salvo no SQLite com sucesso!")
                     st.rerun()
         except Exception as e:
-            st.error(f"Erro ao conectar com a Caixa: {e}")
+            st.error(f"Erro ao conectar com a API da Caixa: {e}")
 
     st.markdown("---")
     st.markdown("#### 💾 GERENCIAR LOTES SALVOS NO BANCO SQLITE")
