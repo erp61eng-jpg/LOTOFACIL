@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE PRETO E BRANCO)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE E LETRAS GRANDES NA CONFERÊNCIA)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -55,7 +55,12 @@ st.markdown('''
         border: 3px solid #000000 !important;
     }
     [data-testid="stMetricValue"] {
-        font-size: 2.2rem !important;
+        font-size: 2.8rem !important;
+        font-weight: 900 !important;
+        color: #000000 !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 1.3rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
@@ -69,6 +74,17 @@ st.markdown('''
         border-radius: 8px;
         text-align: center;
         margin: 10px 0;
+    }
+    
+    /* ESTILOS ESPECÍFICOS PARA AUMENTAR TUDO NA CONFERÊNCIA */
+    .conferencia-container input {
+        font-size: 1.4rem !important;
+        font-weight: 900 !important;
+        letter-spacing: 2px !important;
+    }
+    .conferencia-container label {
+        font-size: 1.3rem !important;
+        font-weight: 900 !important;
     }
 </style>
 ''', unsafe_allow_html=True)
@@ -365,7 +381,7 @@ def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE D
     jogo_set = set(dezenas_jogo)
     sorteio_set = set(dezenas_sorteadas)
     
-    st.markdown(f"<div style='text-align:center; font-weight:900; font-size:16px; margin-bottom:8px; text-transform:uppercase;'>{titulo}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-weight:900; font-size:18px; margin-bottom:12px; text-transform:uppercase;'>{titulo}</div>", unsafe_allow_html=True)
     
     for r in range(5):
         cols = st.columns(5)
@@ -377,19 +393,19 @@ def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE D
             if acertou:
                 bg = "#facc15"
                 color = "#000000"
-                txt_bola = f"{n:02d}<br><span style='font-size:11px;'>★</span>"
+                txt_bola = f"{n:02d}<br><span style='font-size:14px; font-weight:900;'>★</span>"
             elif presente_jogo:
                 bg = "#d4d4d8"
                 color = "#000000"
-                txt_bola = f"{n:02d}<br><span style='font-size:11px;'>&nbsp;</span>"
+                txt_bola = f"{n:02d}<br><span style='font-size:14px;'>&nbsp;</span>"
             else:
                 bg = "#f4f4f5"
                 color = "#71717a"
-                txt_bola = f"{n:02d}<br><span style='font-size:11px;'>&nbsp;</span>"
+                txt_bola = f"{n:02d}<br><span style='font-size:14px;'>&nbsp;</span>"
                 
             with cols[c]:
                 st.markdown(f"""
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:46px;background:{bg};color:{color};font-weight:900;font-size:17px;border:3px solid #000000;border-radius:8px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:4px;">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:55px;background:{bg};color:{color};font-weight:900;font-size:20px;border:3px solid #000000;border-radius:10px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:6px;">
                     {txt_bola}
                 </div>
                 """, unsafe_allow_html=True)
@@ -426,12 +442,12 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA RÁPIDA & VOLANTE VISUAL")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA COM LETRAS GRANDES")
 
 tab_cartela, tab_config, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
     "🎛️ Filtros & Engenharia Reversa",
-    "📥 Conferência & Volante Visual",
+    "📥 Conferência & Resultado Manual",
     "📊 Histórico, Ciclo & SQLite",
     "📝 Bloco de Notas"
 ])
@@ -596,38 +612,39 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & VOLANTE VISUAL (100% ESTÁVEL)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (LETRAS GRANDES)
 # ------------------------------------------------------------------------------
 with tab_upload:
-    st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & VOLANTE VISUAL")
+    st.markdown("<h2 style='font-size: 2.2rem !important;'>🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL</h2>", unsafe_allow_html=True)
     
     with st.container(border=True):
-        st.markdown("#### 📂 ENTRADA DE RESULTADO (MANUAL OU ARQUIVO)")
-        st.caption("Digite as 15 dezenas do sorteio abaixo ou carregue um arquivo de texto (.txt) contendo o resultado.")
+        st.markdown("<h3 style='font-size: 1.6rem !important;'>📝 DIGITAÇÃO MANUAL DO RESULTADO</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 1.2rem !important;'>Digite abaixo as 15 dezenas do sorteio (separadas por espaço, ex: 01 02 03 ... 25):</p>", unsafe_allow_html=True)
         
-        col_m1, col_m2 = st.columns([2, 1])
-        with col_m1:
-            sorteio_str = st.text_input("15 Dezenas do Sorteio (separadas por espaço):", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_conferencia")
-        with col_m2:
-            arquivo_manual = st.file_uploader("Carregar arquivo de resultado (.txt)", type=["txt"])
-            if arquivo_manual is not None:
-                try:
-                    conteudo_arq = arquivo_manual.read().decode("utf-8")
-                    nums_arq = [int(x) for x in re.findall(r"\b\d+\b", conteudo_arq)]
-                    if len(nums_arq) >= 15:
-                        sorteio_str = " ".join([f"{n:02d}" for n in sorted(list(set(nums_arq))[:15])])
-                        st.success("✅ Arquivo manual carregado com sucesso!")
-                except Exception as e:
-                    st.error(f"Erro ao ler arquivo: {e}")
+        # Seção dedicada para entrada manual bem grande
+        sorteio_str = st.text_input("Dezenas do Sorteio Manual:", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_manual_grande")
+        
+        st.markdown("<hr style='border: 2px solid #000;'>", unsafe_allow_html=True)
+        st.markdown("<h4 style='font-size: 1.3rem !important;'>📂 Ou carregar arquivo de texto (.txt)</h4>", unsafe_allow_html=True)
+        arquivo_manual = st.file_uploader("Carregar arquivo de resultado (.txt)", type=["txt"])
+        if arquivo_manual is not None:
+            try:
+                conteudo_arq = arquivo_manual.read().decode("utf-8")
+                nums_arq = [int(x) for x in re.findall(r"\b\d+\b", conteudo_arq)]
+                if len(nums_arq) >= 15:
+                    sorteio_str = " ".join([f"{n:02d}" for n in sorted(list(set(nums_arq))[:15])])
+                    st.success("✅ Arquivo manual carregado com sucesso! Verifique o campo acima.")
+            except Exception as e:
+                st.error(f"Erro ao ler arquivo: {e}")
 
-    # Tratamento seguro e rigoroso das 15 dezenas do sorteio
+    # Tratamento seguro das dezenas
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
     if len(sorteio_nums) == 15:
         if st.session_state.jogos_aprovados:
             st.markdown("---")
-            st.markdown(f"#### 🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)")
+            st.markdown(f"<h3 style='font-size: 1.8rem !important;'>🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)</h3>", unsafe_allow_html=True)
             relatorio, placar = conferir_apostas_contra_sorteio(st.session_state.jogos_aprovados, sorteio_nums)
             
             c15, c14, c13, c12, c11 = st.columns(5)
@@ -638,7 +655,7 @@ with tab_upload:
             c11.metric("11 Pontos", f"{len(placar[11])}")
 
             st.markdown("---")
-            st.markdown("#### 🔍 INSPECIONAR NO VOLANTE 5x5")
+            st.markdown("<h3 style='font-size: 1.8rem !important;'>🔍 INSPECIONAR NO VOLANTE 5x5</h3>", unsafe_allow_html=True)
             
             opcoes_inspecao = []
             for qtd_pts in [15, 14, 13, 12, 11]:
@@ -657,7 +674,6 @@ with tab_upload:
                 jogo_alvo = st.session_state.jogos_aprovados[num_aposta_selecionada - 1]
                 qtd_acertos_alvo = len(set(jogo_alvo) & set(sorteio_nums))
                 
-                # Renderiza o volante 5x5 exato igual ao da foto
                 render_volante_5x5_nativo(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
         else:
             st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba anterior.")
