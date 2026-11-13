@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE E LETRAS GRANDES NA CONFERÊNCIA)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE PRETO E BRANCO - LETRAS GIGANTES)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -29,62 +29,66 @@ st.markdown('''
     }
     html, body, [class*="css"], .stMarkdown, p, span, label, div, input, textarea, select {
         color: #000000 !important;
-        font-weight: 800 !important;
+        font-weight: 900 !important;
         font-family: Arial, Helvetica, sans-serif !important;
         line-height: 1.6 !important;
     }
     h1, h2, h3, h4 { color: #000000 !important; font-weight: 900 !important; }
     
     [data-testid="stVerticalBlock"] > div[style*="border"] {
-        background-color: #f8fafc !important;
-        border: 3px solid #000000 !important;
-        border-radius: 10px !important;
+        background-color: #ffffff !important;
+        border: 4px solid #000000 !important;
+        border-radius: 12px !important;
     }
 
     .stButton > button {
         color: #000000 !important;
-        font-size: 1.35rem !important;
+        font-size: 1.5rem !important;
         font-weight: 900 !important;
-        border: 3px solid #000000 !important;
+        border: 4px solid #000000 !important;
         background-color: #ffffff !important;
         border-radius: 8px !important;
     }
     .stButton > button[kind="primary"] {
         background-color: #facc15 !important;
         color: #000000 !important;
-        border: 3px solid #000000 !important;
+        border: 4px solid #000000 !important;
     }
+    
+    /* MÉTRICAS GIGANTES EM PRETO */
     [data-testid="stMetricValue"] {
-        font-size: 2.8rem !important;
+        font-size: 3.5rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 1.3rem !important;
+        font-size: 1.6rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
+    
     .progresso-gigante {
-        font-size: 1.5rem !important;
+        font-size: 1.8rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
         background-color: #fef08a !important;
-        padding: 12px;
-        border: 3px solid #000000;
-        border-radius: 8px;
+        padding: 15px;
+        border: 4px solid #000000;
+        border-radius: 10px;
         text-align: center;
         margin: 10px 0;
     }
     
-    /* ESTILOS ESPECÍFICOS PARA AUMENTAR TUDO NA CONFERÊNCIA */
-    .conferencia-container input {
-        font-size: 1.4rem !important;
+    /* CAMPOS DE TEXTO E SELECTBOX GRANDES */
+    input, textarea, select {
+        font-size: 1.6rem !important;
         font-weight: 900 !important;
-        letter-spacing: 2px !important;
+        color: #000000 !important;
     }
-    .conferencia-container label {
-        font-size: 1.3rem !important;
+    label {
+        font-size: 1.5rem !important;
         font-weight: 900 !important;
+        color: #000000 !important;
     }
 </style>
 ''', unsafe_allow_html=True)
@@ -381,7 +385,7 @@ def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE D
     jogo_set = set(dezenas_jogo)
     sorteio_set = set(dezenas_sorteadas)
     
-    st.markdown(f"<div style='text-align:center; font-weight:900; font-size:18px; margin-bottom:12px; text-transform:uppercase;'>{titulo}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-weight:900; font-size:22px; margin-bottom:15px; color:#000000; text-transform:uppercase;'>{titulo}</div>", unsafe_allow_html=True)
     
     for r in range(5):
         cols = st.columns(5)
@@ -390,22 +394,23 @@ def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE D
             acertou = (n in jogo_set) and (n in sorteio_set)
             presente_jogo = n in jogo_set
             
+            # Fundo amarelo com letra e estrela em PRETO BRilhante
             if acertou:
                 bg = "#facc15"
                 color = "#000000"
-                txt_bola = f"{n:02d}<br><span style='font-size:14px; font-weight:900;'>★</span>"
+                txt_bola = f"{n:02d}<br><span style='font-size:16px; font-weight:900; color:#000000;'>★</span>"
             elif presente_jogo:
-                bg = "#d4d4d8"
+                bg = "#e4e4e7"
                 color = "#000000"
-                txt_bola = f"{n:02d}<br><span style='font-size:14px;'>&nbsp;</span>"
+                txt_bola = f"{n:02d}<br><span style='font-size:16px;'>&nbsp;</span>"
             else:
-                bg = "#f4f4f5"
-                color = "#71717a"
-                txt_bola = f"{n:02d}<br><span style='font-size:14px;'>&nbsp;</span>"
+                bg = "#ffffff"
+                color = "#000000"
+                txt_bola = f"{n:02d}<br><span style='font-size:16px;'>&nbsp;</span>"
                 
             with cols[c]:
                 st.markdown(f"""
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:55px;background:{bg};color:{color};font-weight:900;font-size:20px;border:3px solid #000000;border-radius:10px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:6px;">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:65px;background:{bg};color:{color};font-weight:900;font-size:24px;border:4px solid #000000;border-radius:10px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:6px;">
                     {txt_bola}
                 </div>
                 """, unsafe_allow_html=True)
@@ -442,7 +447,7 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA COM LETRAS GRANDES")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA GIGANTE")
 
 tab_cartela, tab_config, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -612,20 +617,20 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (LETRAS GRANDES)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (LETRAS GIGANTES E TUDO PRETO)
 # ------------------------------------------------------------------------------
 with tab_upload:
-    st.markdown("<h2 style='font-size: 2.2rem !important;'>🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL</h2>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size: 2.8rem !important; color:#000000;'>🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL</h1>", unsafe_allow_html=True)
     
     with st.container(border=True):
-        st.markdown("<h3 style='font-size: 1.6rem !important;'>📝 DIGITAÇÃO MANUAL DO RESULTADO</h3>", unsafe_allow_html=True)
-        st.markdown("<p style='font-size: 1.2rem !important;'>Digite abaixo as 15 dezenas do sorteio (separadas por espaço, ex: 01 02 03 ... 25):</p>", unsafe_allow_html=True)
+        st.markdown("<h2 style='font-size: 2rem !important; color:#000000;'>📝 DIGITAÇÃO MANUAL DO RESULTADO</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 1.5rem !important; color:#000000;'>Digite abaixo as 15 dezenas do sorteio (separadas por espaço, ex: 01 02 03 ... 25):</p>", unsafe_allow_html=True)
         
-        # Seção dedicada para entrada manual bem grande
-        sorteio_str = st.text_input("Dezenas do Sorteio Manual:", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_manual_grande")
+        # Campo de resultado manual bem grande e destacado
+        sorteio_str = st.text_input("Dezenas do Sorteio Manual:", value="03 05 07 08 11 13 14 15 18 19 20 21 22 23 25", key="input_sorteio_manual_gigante")
         
-        st.markdown("<hr style='border: 2px solid #000;'>", unsafe_allow_html=True)
-        st.markdown("<h4 style='font-size: 1.3rem !important;'>📂 Ou carregar arquivo de texto (.txt)</h4>", unsafe_allow_html=True)
+        st.markdown("<hr style='border: 3px solid #000000;'>", unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size: 1.6rem !important; color:#000000;'>📂 Ou carregar arquivo de texto (.txt)</h3>", unsafe_allow_html=True)
         arquivo_manual = st.file_uploader("Carregar arquivo de resultado (.txt)", type=["txt"])
         if arquivo_manual is not None:
             try:
@@ -644,7 +649,7 @@ with tab_upload:
     if len(sorteio_nums) == 15:
         if st.session_state.jogos_aprovados:
             st.markdown("---")
-            st.markdown(f"<h3 style='font-size: 1.8rem !important;'>🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='font-size: 2.2rem !important; color:#000000;'>🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)</h2>", unsafe_allow_html=True)
             relatorio, placar = conferir_apostas_contra_sorteio(st.session_state.jogos_aprovados, sorteio_nums)
             
             c15, c14, c13, c12, c11 = st.columns(5)
@@ -655,7 +660,7 @@ with tab_upload:
             c11.metric("11 Pontos", f"{len(placar[11])}")
 
             st.markdown("---")
-            st.markdown("<h3 style='font-size: 1.8rem !important;'>🔍 INSPECIONAR NO VOLANTE 5x5</h3>", unsafe_allow_html=True)
+            st.markdown("<h2 style='font-size: 2.2rem !important; color:#000000;'>🔍 INSPECIONAR NO VOLANTE 5x5</h2>", unsafe_allow_html=True)
             
             opcoes_inspecao = []
             for qtd_pts in [15, 14, 13, 12, 11]:
