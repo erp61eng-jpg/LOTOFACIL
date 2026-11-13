@@ -28,7 +28,6 @@ st.markdown('''
         color: #000000 !important;
     }
     
-    /* AUMENTANDO TUDO PARA LETRAS BEM GRANDES */
     html, body, [class*="css"], .stMarkdown, p, span, label, div, input, textarea, select {
         color: #000000 !important;
         font-size: 1.4rem !important;
@@ -87,7 +86,6 @@ st.markdown('''
         margin: 10px 0;
     }
     
-    /* CAMPOS E SELECTBOX GIGANTES */
     input, textarea, select {
         font-size: 1.8rem !important;
         font-weight: 900 !important;
@@ -131,7 +129,7 @@ def inicializar_banco():
 def salvar_sorteio_db(concurso, dezenas):
     conn = sqlite3.connect(NOME_BANCO)
     cursor = conn.cursor()
-    dezenas_str = " ".join([f"{n:02d}" for n in sorted(dezenas)])
+    dezenas_str = " ".join([f"{int(n):02d}" for n in sorted(dezenas)])
     cursor.execute("INSERT OR REPLACE INTO sorteios (concurso, dezenas) VALUES (?, ?)", (concurso, dezenas_str))
     conn.commit()
     conn.close()
@@ -153,7 +151,7 @@ def salvar_jogos_aprovados_db(lista_jogos, lote_tag="Padrao"):
     conn = sqlite3.connect(NOME_BANCO)
     cursor = conn.cursor()
     for jogo in lista_jogos:
-        jogo_str = " ".join([f"{n:02d}" for n in sorted(jogo)])
+        jogo_str = " ".join([f"{int(n):02d}" for n in sorted(jogo)])
         cursor.execute("INSERT INTO jogos_aprovados (lote_tag, jogo) VALUES (?, ?)", (lote_tag, jogo_str))
     conn.commit()
     conn.close()
@@ -297,7 +295,7 @@ def extrair_analise_elite(dados_calor):
     }
 
 def extrair_filtros_de_jogo(dezenas, margem_soma=25):
-    dezenas = sorted(list(set(dezenas)))
+    dezenas = sorted(list(set([int(x) for x in dezenas])))
     if len(dezenas) < 15: dezenas = JOGO_BASE_PADRAO
 
     l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
@@ -329,16 +327,17 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=25):
     }
 
 def validar_aposta_final_15(jogo, cfg):
-    soma_j = sum(jogo)
+    jogo_int = [int(x) for x in jogo]
+    soma_j = sum(jogo_int)
     faixa_soma = cfg.get("soma", [140, 250])
     if not (faixa_soma[0] <= soma_j <= faixa_soma[1]): return False
     
-    if sum(1 for n in jogo if PAR_LOOKUP[n]) not in cfg.get("pares", []): return False
-    if sum(1 for n in jogo if PRIMO_LOOKUP[n]) not in cfg.get("primos", []): return False
-    if sum(1 for n in jogo if MOLDURA_LOOKUP[n]) not in cfg.get("moldura", []): return False
+    if sum(1 for n in jogo_int if PAR_LOOKUP[n]) not in cfg.get("pares", []): return False
+    if sum(1 for n in jogo_int if PRIMO_LOOKUP[n]) not in cfg.get("primos", []): return False
+    if sum(1 for n in jogo_int if MOLDURA_LOOKUP[n]) not in cfg.get("moldura", []): return False
 
     l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
-    for n in jogo:
+    for n in jogo_int:
         l_cnt[ROW_LOOKUP[n]] += 1
         c_cnt[COL_LOOKUP[n]] += 1
         dc_cnt[DC_LOOKUP[n]] += 1
@@ -359,7 +358,7 @@ def validar_aposta_final_15(jogo, cfg):
     return True
 
 def executar_varredura_pool(pool_dezenas, cfg, bar_progresso, ticker_metricas):
-    dezenas_candidatas = sorted(list(pool_dezenas))
+    dezenas_candidatas = sorted(list(set([int(x) for x in pool_dezenas])))
     if len(dezenas_candidatas) < 15: return []
     total_combinacoes = math.comb(len(dezenas_candidatas), 15)
     jogos_aprovados = []
@@ -368,7 +367,7 @@ def executar_varredura_pool(pool_dezenas, cfg, bar_progresso, ticker_metricas):
     for comb in combinations(dezenas_candidatas, 15):
         testadas += 1
         if validar_aposta_final_15(comb, cfg):
-            jogos_aprovados.append(sorted(list(comb)))
+            jogos_aprovados.append([int(x) for x in sorted(list(comb))])
         t_agora = time.time()
         if t_agora - t_ultimo_update >= 0.25:
             t_ultimo_update = t_agora
@@ -379,19 +378,21 @@ def executar_varredura_pool(pool_dezenas, cfg, bar_progresso, ticker_metricas):
     return jogos_aprovados
 
 def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
-    sorteio_set = set(dezenas_sorteadas)
+    sorteio_set = set([int(x) for x in dezenas_sorteadas])
     placar = {15: [], 14: [], 13: [], 12: [], 11: [], 10: []}
     relatorio = []
     for idx, jogo in enumerate(lista_jogos):
-        acertos = sorted(list(set(jogo) & sorteio_set))
+        jogo_int = [int(x) for x in jogo]
+        acertos = sorted(list(set(jogo_int) & sorteio_set))
         qtd = len(acertos)
-        if qtd in placar: placar[qtd].append(idx + 1)
-        relatorio.append({"num_aposta": idx + 1, "jogo": sorted(jogo), "qtd_acertos": qtd, "acertos": acertos})
+        if qtd in placar: 
+            placar[qtd].append(idx + 1)
+        relatorio.append({"num_aposta": idx + 1, "jogo": jogo_int, "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
 def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE DA APOSTA"):
-    jogo_set = set(dezenas_jogo)
-    sorteio_set = set(dezenas_sorteadas)
+    jogo_set = set([int(x) for x in dezenas_jogo])
+    sorteio_set = set([int(x) for x in dezenas_sorteadas])
     
     st.markdown(f"<div style='text-align:center; font-weight:900; font-size:26px; margin-bottom:15px; color:#000000; text-transform:uppercase;'>{titulo}</div>", unsafe_allow_html=True)
     
@@ -402,7 +403,6 @@ def render_volante_5x5_nativo(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE D
             acertou = (n in jogo_set) and (n in sorteio_set)
             presente_jogo = n in jogo_set
             
-            # Cores com texto e estrela 100% em PRETO
             if acertou:
                 bg = "#facc15"
                 color = "#000000"
@@ -622,10 +622,10 @@ with tab_config:
 
     if st.session_state.jogos_aprovados:
         st.markdown(f"<div class='progresso-gigante'>TOTAL NA MEMÓRIA: {len(st.session_state.jogos_aprovados):,} APOSTAS</div>", unsafe_allow_html=True)
-        st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
+        st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (LETRAS GIGANTES E TUDO EM PRETO)
+# ABA 3: CONFERÊNCIA & RESULTADO MANUAL (CORRIGIDO E BLINDADO)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("<h1 style='font-size: 3.2rem !important; color:#000000;'>🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL</h1>", unsafe_allow_html=True)
@@ -649,7 +649,7 @@ with tab_upload:
             except Exception as e:
                 st.error(f"Erro ao ler arquivo: {e}")
 
-    # Tratamento seguro das dezenas
+    # Tratamento seguro das dezenas do sorteio
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", sorteio_str)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
@@ -657,6 +657,8 @@ with tab_upload:
         if st.session_state.jogos_aprovados:
             st.markdown("---")
             st.markdown(f"<h2 style='font-size: 2.6rem !important; color:#000000;'>🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)</h2>", unsafe_allow_html=True)
+            
+            # Executa a conferência garantindo que os tipos numéricos batam perfeitamente
             relatorio, placar = conferir_apostas_contra_sorteio(st.session_state.jogos_aprovados, sorteio_nums)
             
             c15, c14, c13, c12, c11 = st.columns(5)
@@ -684,7 +686,7 @@ with tab_upload:
             if escolha_inspecao:
                 num_aposta_selecionada = int(re.findall(r"#(\d+)", escolha_inspecao)[0])
                 jogo_alvo = st.session_state.jogos_aprovados[num_aposta_selecionada - 1]
-                qtd_acertos_alvo = len(set(jogo_alvo) & set(sorteio_nums))
+                qtd_acertos_alvo = len(set([int(x) for x in jogo_alvo]) & set(sorteio_nums))
                 
                 render_volante_5x5_nativo(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
         else:
@@ -711,7 +713,7 @@ with tab_historico:
                     st.success(f"Concurso #{num_concurso} sincronizado e salvo no SQLite com sucesso!")
                     st.rerun()
         except Exception as e:
-            st.error(f"Erro ao conectar com a API da Caixa: {e}")
+            st.error(f"Erro ao conectar com a Caixa: {e}")
 
     st.markdown("---")
     st.markdown("#### 💾 GERENCIAR LOTES SALVOS NO BANCO SQLITE")
