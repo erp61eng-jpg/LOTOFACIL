@@ -362,8 +362,7 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         relatorio.append({"num_aposta": idx + 1, "jogo": sorted(jogo), "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
-def render_volante_5x5_html(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE DA APOSRA"):
-    """Renderiza a tabela 5x5 estilo volante exatamente igual à foto do usuário"""
+def render_volante_5x5_html(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE DA APOSTA"):
     jogo_set = set(dezenas_jogo)
     sorteio_set = set(dezenas_sorteadas)
     
@@ -374,22 +373,18 @@ def render_volante_5x5_html(dezenas_jogo, dezenas_sorteadas, titulo="VOLANTE DA 
             n = r * 5 + c + 1
             n_str = f"{n:02d}"
             
-            # Verifica se o número faz parte da aposta e se acertou o sorteio
             acertou = (n in jogo_set) and (n in sorteio_set)
             presente_jogo = n in jogo_set
             
             if acertou:
-                # Amarelo forte com borda preta e estrela (igual à foto)
                 bg = "#facc15"
                 color = "#000000"
                 extra_content = "<div style='font-size:11px;line-height:8px;'>★</div>"
             elif presente_jogo:
-                # Aposta selecionada mas não sorteada (tom intermediário ou cinza escuro)
                 bg = "#d4d4d8"
                 color = "#000000"
                 extra_content = "<div style='font-size:11px;line-height:8px;'>&nbsp;</div>"
             else:
-                # Não faz parte da aposta (cinza claro limpo)
                 bg = "#f4f4f5"
                 color = "#71717a"
                 extra_content = "<div style='font-size:11px;line-height:8px;'>&nbsp;</div>"
@@ -441,7 +436,7 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA COM VOLANTE VISUAL")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO • CONFERÊNCIA RÁPIDA & VOLANTE VISUAL")
 
 tab_cartela, tab_config, tab_upload, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -611,7 +606,7 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{n:02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & VOLANTE VISUAL (COM TABELA ESTILO FOTO)
+# ABA 3: CONFERÊNCIA & VOLANTE VISUAL (SEM GRÁFICO)
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & VOLANTE VISUAL")
@@ -638,19 +633,6 @@ with tab_upload:
     sorteio_nums = sorted([int(x) for x in re.findall(r"\b\d+\b", sorteio_str) if 1 <= int(x) <= 25])
 
     if len(sorteio_nums) == 15:
-        # Gráfico de distribuição por faixas
-        st.markdown("---")
-        st.markdown("#### 📊 GRÁFICO DE DISTRIBUIÇÃO POR FAIXAS DE DEZENAS")
-        faixas_dist = {
-            "01 a 05": sum(1 for n in sorteio_nums if 1 <= n <= 5),
-            "06 a 10": sum(1 for n in sorteio_nums if 6 <= n <= 10),
-            "11 a 15": sum(1 for n in sorteio_nums if 11 <= n <= 15),
-            "16 a 20": sum(1 for n in sorteio_nums if 16 <= n <= 20),
-            "21 a 25": sum(1 for n in sorteio_nums if 21 <= n <= 25)
-        }
-        st.bar_chart(faixas_dist)
-
-        # Placar de conferência e inspeção visual no volante
         if st.session_state.jogos_aprovados:
             st.markdown("---")
             st.markdown(f"#### 🏆 PLACAR DAS APOSTAS NA MEMÓRIA ({len(st.session_state.jogos_aprovados):,} jogos)")
@@ -666,7 +648,6 @@ with tab_upload:
             st.markdown("---")
             st.markdown("#### 🔍 INSPECIONAR NO VOLANTE 5x5")
             
-            # Filtro para inspecionar apostas por pontuação ou número
             opcoes_inspecao = []
             for qtd_pts in [15, 14, 13, 12, 11]:
                 if placar[qtd_pts]:
@@ -684,7 +665,6 @@ with tab_upload:
                 jogo_alvo = st.session_state.jogos_aprovados[num_aposta_selecionada - 1]
                 qtd_acertos_alvo = len(set(jogo_alvo) & set(sorteio_nums))
                 
-                # Renderiza o volante idêntico ao da foto enviada!
                 render_volante_5x5_html(jogo_alvo, sorteio_nums, titulo=f"Aposta #{num_aposta_selecionada:04d} ({qtd_acertos_alvo} Acertos)")
         else:
             st.warning("⚠️ Não há apostas carregadas na memória para conferir. Gere ou carregue um lote na aba anterior.")
