@@ -180,7 +180,7 @@ def deletar_lote_db(lote_tag):
 
 
 # ==============================================================================
-# CONSTANTES & CONFIGURAÇÕES FLEXÍVEIS
+# CONSTANTES & CONFIGURAÇÕES DE PRECISÃO RIGOROSA
 # ==============================================================================
 ARQUIVO_NOTAS_LOCAL = "meu_bloco_de_notas.txt"
 
@@ -294,9 +294,10 @@ def extrair_analise_elite(dados_calor):
     }
 
 def extrair_filtros_de_jogo(dezenas):
-    """Adapta os filtros dinamicamente à quantidade exata de dezenas selecionadas pelo usuário (seja 15, 18, 20 ou 25)"""
+    """Sintetiza exatamente as 15 dezenas do jogo base digitado com margem restrita e rigorosa (±1 ponto)"""
     dezenas = sorted(list(set([int(x) for x in dezenas])))
-    if len(dezenas) < 15: dezenas = list(range(1, 16))
+    if len(dezenas) < 15: dezenas = JOGO_BASE_PADRAO
+    if len(dezenas) > 15: dezenas = dezenas[:15] # Garante exatamente 15 para a base
 
     l_cnt, c_cnt, dc_cnt, dd_cnt = [0]*5, [0]*5, [0]*5, [0]*5
     for n in dezenas:
@@ -305,36 +306,31 @@ def extrair_filtros_de_jogo(dezenas):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    # Folga proporcional ao tamanho do universo escolhido
-    folga = 2 if len(dezenas) <= 18 else 3
-
-    def faixa_dinamica(val):
-        return [max(0, val - folga), min(5, val + folga)]
+    def faixa_amostra_rigorosa(val):
+        # Margem estrita de ±1 ponto em cima exatamente do seu jogo base
+        return [max(0, val - 1), min(5, val + 1)]
 
     pares_jogo = sum(1 for n in dezenas if PAR_LOOKUP[n])
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
-    
-    # Soma média proporcional baseada nas primeiras 15 dezenas ou na amostra
-    amostra_base = dezenas[:15] if len(dezenas) >= 15 else dezenas
-    soma_base = sum(amostra_base)
+    soma_real = sum(dezenas)
 
     return {
-        "linhas": [faixa_dinamica(q) for q in l_cnt],
-        "colunas": [faixa_dinamica(q) for q in c_cnt],
-        "diag_cresc": [faixa_dinamica(q) for q in dc_cnt],
-        "diag_decresc": [faixa_dinamica(q) for q in dd_cnt],
-        "primos": list(range(max(0, primos_total - 3), min(10, primos_total + 4))),
-        "pares": list(range(max(0, pares_jogo - 4), min(16, pares_jogo + 5))),
-        "moldura": list(range(max(0, moldura_total - 4), min(16, moldura_total + 5))),
-        "soma": [max(80, soma_base - 40), min(320, soma_base + 40)],
+        "linhas": [faixa_amostra_rigorosa(q) for q in l_cnt],
+        "colunas": [faixa_amostra_rigorosa(q) for q in c_cnt],
+        "diag_cresc": [faixa_amostra_rigorosa(q) for q in dc_cnt],
+        "diag_decresc": [faixa_amostra_rigorosa(q) for q in dd_cnt],
+        "primos": list(range(max(0, primos_total - 1), min(10, primos_total + 2))),
+        "pares": list(range(max(0, pares_jogo - 1), min(16, pares_jogo + 2))),
+        "moldura": list(range(max(0, moldura_total - 1), min(16, moldura_total + 2))),
+        "soma": [max(120, soma_real - 15), min(240, soma_real + 15)],
         "amostra_original": dezenas
     }
 
 def validar_aposta_final_15(jogo, cfg):
     jogo_int = [int(x) for x in jogo]
     soma_j = sum(jogo_int)
-    faixa_soma = cfg.get("soma", [80, 320])
+    faixa_soma = cfg.get("soma", [120, 240])
     if not (faixa_soma[0] <= soma_j <= faixa_soma[1]): return False
     
     if sum(1 for n in jogo_int if PAR_LOOKUP[n]) not in cfg.get("pares", []): return False
@@ -468,7 +464,10 @@ if "jogos_aprovados" not in st.session_state:
         st.session_state.jogos_aprovados = []
 
 if "cartela_base_selecionada" not in st.session_state:
-    st.session_state.cartela_base_selecionada = set(JOGO_BASE_PADRAO)
+    st.session_state.cartela_base_selecionada = set(range(1, 26))
+
+if "input_base_eng" not in st.session_state:
+    st.session_state.input_base_eng = " ".join([f"{n:02d}" for n in JOGO_BASE_PADRAO])
 
 if "sorteio_manual" not in st.session_state:
     st.session_state.sorteio_manual = "03 05 07 08 11 13 14 15 18 19 20 21 22 23 25"
@@ -482,10 +481,10 @@ analise_elite = extrair_analise_elite(dados_calor)
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • SELEÇÃO LIVRE ATÉ 25 DEZENAS")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE • SEPARAÇÃO TOTAL ENTRE SELEÇÃO E ENGENHARIA REVERSA")
 
 tab_cartela, tab_config, tab_upload, tab_visualizador, tab_historico, tab_notas = st.tabs([
-    "🎟️ Cartela & Seleção Base",
+    "🎟️ Cartela & Seleção Livre",
     "🎛️ Filtros & Engenharia Reversa",
     "📥 Conferência & Resultado",
     "📋 Visualizador de Jogos (5x5)",
@@ -494,26 +493,22 @@ tab_cartela, tab_config, tab_upload, tab_visualizador, tab_historico, tab_notas 
 ])
 
 # ------------------------------------------------------------------------------
-# ABA 1: CARTELA & SELEÇÃO BASE (LIVRE ATÉ 25 DEZENAS)
+# ABA 1: CARTELA & SELEÇÃO LIVRE (INDEPENDENTE)
 # ------------------------------------------------------------------------------
 with tab_cartela:
-    st.markdown("### 🎟️ SELEÇÃO LIVRE DA CARTELA BASE (ATÉ 25 DEZENAS)")
-    st.caption("Clique nos números abaixo para marcar ou desmarcar livremente quantas dezenas quiser (de 1 até 25):")
+    st.markdown("### 🎟️ SELEÇÃO LIVRE DA CARTELA (ATÉ 25 DEZENAS)")
+    st.caption("Aqui você marca livremente as dezenas que quiser para suas análises visuais ou exportação independente:")
 
-    c_b1, c_b2, c_b3, c_b4 = st.columns(4)
+    c_b1, c_b2, c_b3 = st.columns(3)
     with c_b1:
-        if st.button("⭐ Carregar Padrão (15)", use_container_width=True):
-            st.session_state.cartela_base_selecionada = set(JOGO_BASE_PADRAO)
-            st.rerun()
-    with c_b2:
         if st.button("✅ Marcar Todas (25)", use_container_width=True):
             st.session_state.cartela_base_selecionada = set(range(1, 26))
             st.rerun()
-    with c_b3:
-        if st.button("🎲 Marcar 18 Dezenas", use_container_width=True):
-            st.session_state.cartela_base_selecionada = set(range(1, 19))
+    with c_b2:
+        if st.button("⭐ Marcar Padrão (15)", use_container_width=True):
+            st.session_state.cartela_base_selecionada = set(JOGO_BASE_PADRAO)
             st.rerun()
-    with c_b4:
+    with c_b3:
         if st.button("🧹 Limpar Cartela", use_container_width=True):
             st.session_state.cartela_base_selecionada = set()
             st.rerun()
@@ -524,56 +519,51 @@ with tab_cartela:
             n = r * 5 + c + 1
             ativa = n in st.session_state.cartela_base_selecionada
             with cols[c]:
-                if st.button(f"Nº {n:02d}\n({'⭐ ATIVO' if ativa else '⚪'})", key=f"btn_base_livre_n_{n}", type="primary" if ativa else "secondary", use_container_width=True):
+                if st.button(f"Nº {n:02d}\n({'⭐ ATIVO' if ativa else '⚪'})", key=f"btn_livre_n_{n}", type="primary" if ativa else "secondary", use_container_width=True):
                     if ativa:
                         st.session_state.cartela_base_selecionada.remove(n)
                     else:
                         st.session_state.cartela_base_selecionada.add(n)
                     st.rerun()
 
-    total_base_atual = len(st.session_state.cartela_base_selecionada)
-    if total_base_atual >= 15:
-        st.success(f"✅ Universo base com **{total_base_atual}** dezenas selecionadas: `{' '.join([f'{n:02d}' for n in sorted(st.session_state.cartela_base_selecionada)])}`")
-    else:
-        st.warning(f"⚠️ Seu universo base tem **{total_base_atual}** dezenas. Para gerar jogos, selecione pelo menos **15 dezenas**.")
+    total_livre = len(st.session_state.cartela_base_selecionada)
+    st.info(f"📊 Dezenas selecionadas nesta aba livre: **{total_livre}** `{' '.join([f'{n:02d}' for n in sorted(st.session_state.cartela_base_selecionada)])}`")
 
 # ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
+# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (ESTRITAMENTE 15)
 # ------------------------------------------------------------------------------
 with tab_config:
-    st.markdown("### 🎛️ ENGENHARIA REVERSA & SÍNTESE DO JOGO BASE")
+    st.markdown("### 🎛️ ENGENHARIA REVERSA (EXATAMENTE 15 DEZENAS BASE)")
     
-    dezenas_base_lista = sorted(list(st.session_state.cartela_base_selecionada))
-    if len(dezenas_base_lista) < 15:
-        dezenas_base_lista = JOGO_BASE_PADRAO
-    
-    texto_base_sinc = " ".join([f"{n:02d}" for n in dezenas_base_lista])
-
     col_rev_txt, col_rev_volante = st.columns([1.5, 1])
     
     with col_rev_txt:
         with st.container(border=True):
-            st.caption("O sistema extrai as dezenas ativas na sua cartela base e aplica folgas inteligentes baseadas no tamanho do seu universo.")
-            txt_base = st.text_area("Dezenas Selecionadas no Universo Base:", value=texto_base_sinc, height=85)
+            st.caption("Digite ou cole aqui **estritamente as suas 15 dezenas de base**. O sistema vai extrair a estrutura exata delas com margem rigorosa de ±1 ponto:")
+            txt_base = st.text_area("Suas 15 Dezenas de Base:", value=st.session_state.input_base_eng, height=85)
+            st.session_state.input_base_eng = txt_base
 
-            if st.button("⚡ EXTRAIR E CALIBRAR FILTROS DO UNIVERSO", type="primary", use_container_width=True):
+            if st.button("⚡ EXTRAIR E CALIBRAR FILTROS (RIGOROSO)", type="primary", use_container_width=True):
                 nums = [int(x) for x in re.findall(r"\b\d+\b", txt_base)]
                 nums_limpos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
                 if len(nums_limpos) < 15:
-                    st.error("⚠️ Selecione ou insira pelo menos 15 dezenas válidas.")
+                    st.error("⚠️ Insira pelo menos 15 dezenas válidas para a base.")
                 else:
-                    cfg_gerada = extrair_filtros_de_jogo(nums_limpos)
+                    cfg_gerada = extrair_filtros_de_jogo(nums_limpos[:15])
                     st.session_state["cfg_ativa"] = cfg_gerada
-                    st.session_state.pool_trabalho = set(nums_limpos)
-                    st.success(f"✅ Filtros extraídos com sucesso usando **{len(nums_limpos)} dezenas** do universo base!")
+                    st.session_state.pool_trabalho = set(nums_limpos[:15])
+                    st.success("✅ Filtros extraídos com margem restrita e rigorosa de ±1 ponto!")
                     st.rerun()
+
+    nums_base_atuais = [int(x) for x in re.findall(r"\b\d+\b", st.session_state.input_base_eng)]
+    nums_base_15 = nums_base_atuais[:15] if len(nums_base_atuais) >= 15 else JOGO_BASE_PADRAO
 
     with col_rev_volante:
         with st.container(border=True):
-            st.markdown("<div style='text-align:center; font-weight:900; font-size:14px; margin-bottom:5px;'>📌 AMOSTRA DO JOGO BASE</div>", unsafe_allow_html=True)
-            render_volante_base_compacto(dezenas_base_lista)
+            st.markdown("<div style='text-align:center; font-weight:900; font-size:14px; margin-bottom:5px;'>📌 AMOSTRA DA BASE (15 DZ)</div>", unsafe_allow_html=True)
+            render_volante_base_compacto(nums_base_15)
 
-    cfg_ativo = st.session_state.get("cfg_ativa", extrair_filtros_de_jogo(dezenas_base_lista))
+    cfg_ativo = st.session_state.get("cfg_ativa", extrair_filtros_de_jogo(nums_base_15))
 
     with st.container(border=True):
         st.markdown("#### 1️⃣ LINHAS INDIVIDUAIS (L01 a L05)")
@@ -636,7 +626,7 @@ with tab_config:
         with c_p3:
             moldura_sel = st.multiselect("Quantidade na Moldura:", list(range(16)), default=cfg_ativo["moldura"], key="sel_moldura")
 
-        faixa_soma_cfg = st.slider("Faixa de Soma Total:", 80, 320, tuple(cfg_ativo["soma"]), key="sel_soma")
+        faixa_soma_cfg = st.slider("Faixa de Soma Total:", 100, 300, tuple(cfg_ativo["soma"]), key="sel_soma")
 
     tag_lote_input = st.text_input("Etiqueta (Tag) para salvar este lote no banco SQLite:", value=f"Lote_{time.strftime('%d%m_%H%M')}")
 
@@ -653,7 +643,7 @@ with tab_config:
         }
         
         with st.spinner("🛠️ Processando combinações..."):
-            aprovados = executar_varredura_pool(dezenas_base_lista, cfg_atualizado, st.empty(), st.empty())
+            aprovados = executar_varredura_pool(nums_base_15, cfg_atualizado, st.empty(), st.empty())
             st.session_state.jogos_aprovados = aprovados
             if aprovados:
                 salvar_jogos_aprovados_db(aprovados, lote_tag=tag_lote_input)
