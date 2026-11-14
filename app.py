@@ -390,77 +390,51 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
     return relatorio, placar
 
 def render_volante_5x5_azul(dezenas_jogo, titulo="CARTÃO 5x5"):
-    """Renderiza a matriz 5x5 em AZUL conforme solicitado pelo usuário"""
+    """Renderiza a matriz 5x5 em AZUL usando colunas nativas (Estável, sem cortes HTML)"""
     jogo_set = set([int(x) for x in dezenas_jogo])
     
-    celulas_html = ""
+    st.markdown(f"<div style='font-weight:900; font-size:15px; margin-bottom:6px; text-transform:uppercase; text-align:center;'>🔵 {titulo}</div>", unsafe_allow_html=True)
+    
     for r in range(5):
-        celulas_html += "<div style='display:flex;justify-content:center;gap:4px;margin-bottom:4px;'>"
+        cols = st.columns(5)
         for c in range(5):
             n = r * 5 + c + 1
             presente_jogo = n in jogo_set
             
-            if presente_jogo:
-                bg = "#0284c7"  # Azul forte para os números marcados
-                color = "#ffffff"
-            else:
-                bg = "#e0f2fe"  # Azul bem claro para os não marcados
-                color = "#0369a1"
-                
-            celulas_html += f"""
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:38px;height:38px;background:{bg};color:{color};font-weight:900;font-size:14px;border:2px solid #0369a1;border-radius:6px;font-family:monospace;">
-                {n:02d}
-            </div>
-            """
-        celulas_html += "</div>"
-
-    st.markdown(f'''
-    <div style="background:#ffffff;border:3px solid #0284c7;border-radius:10px;padding:10px;margin:8px auto;max-width:260px;text-align:center;">
-        <div style="font-weight:900;color:#0369a1;font-size:13px;margin-bottom:6px;text-transform:uppercase;">🔵 {titulo}</div>
-        {celulas_html}
-    </div>
-    ''', unsafe_allow_html=True)
-
+            bg = "#0284c7" if presente_jogo else "#e0f2fe"
+            color = "#ffffff" if presente_jogo else "#0369a1"
+            
+            with cols[c]:
+                st.markdown(f"""
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:38px;background:{bg};color:{color};font-weight:900;font-size:14px;border:2px solid #0369a1;border-radius:6px;font-family:monospace;text-align:center;margin-bottom:4px;">
+                    {n:02d}
+                </div>
+                """, unsafe_allow_html=True)
 
 def render_volante_conferencia(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃO"):
     jogo_set = set([int(x) for x in dezenas_jogo])
     sorteio_set = set([int(x) for x in dezenas_sorteadas])
     
-    celulas_html = ""
     for r in range(5):
-        celulas_html += "<div style='display:flex;justify-content:center;gap:4px;margin-bottom:4px;'>"
+        cols = st.columns(5)
         for c in range(5):
             n = r * 5 + c + 1
             acertou = (n in jogo_set) and (n in sorteio_set)
             presente_jogo = n in jogo_set
             
             if acertou:
-                bg = "#facc15"
-                color = "#000000"
-                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>★</div>"
+                bg, color, txt = "#facc15", "#000000", f"{n:02d}<br><span style='font-size:10px;'>★</span>"
             elif presente_jogo:
-                bg = "#e4e4e7"
-                color = "#000000"
-                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>&nbsp;</div>"
+                bg, color, txt = "#e4e4e7", "#000000", f"{n:02d}<br><span style='font-size:10px;'>&nbsp;</span>"
             else:
-                bg = "#ffffff"
-                color = "#71717a"
-                conteudo_extra = "<div style='font-size:10px;line-height:6px;'>&nbsp;</div>"
+                bg, color, txt = "#ffffff", "#71717a", f"{n:02d}<br><span style='font-size:10px;'>&nbsp;</span>"
                 
-            celulas_html += f"""
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:42px;height:42px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;">
-                {n:02d}
-                {conteudo_extra}
-            </div>
-            """
-        celulas_html += "</div>"
-
-    st.markdown(f'''
-    <div style="background:#ffffff;border:3px solid #000000;border-radius:10px;padding:12px;margin:10px auto;max-width:280px;text-align:center;">
-        <div style="font-weight:900;color:#000000;font-size:13px;margin-bottom:8px;text-transform:uppercase;">📋 {titulo}</div>
-        {celulas_html}
-    </div>
-    ''', unsafe_allow_html=True)
+            with cols[c]:
+                st.markdown(f"""
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:42px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:4px;">
+                    {txt}
+                </div>
+                """, unsafe_allow_html=True)
 
 
 # ==============================================================================
@@ -668,7 +642,7 @@ with tab_config:
         st.download_button("📥 BAIXAR JOGOS ATUAIS (.TXT)", data="\n".join([" ".join([f"{int(n):02d}" for n in j]) for j in st.session_state.jogos_aprovados]), file_name="lotofacil_filtradas.txt", mime="text/plain", use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# ABA 3: CONFERÊNCIA & RESULTADO (COM CONTAGEM IMEDIATA DE UPLOAD E CORREÇÃO)
+# ABA 3: CONFERÊNCIA & RESULTADO
 # ------------------------------------------------------------------------------
 with tab_upload:
     st.markdown("### 🎯 CONFERÊNCIA DE RESULTADOS & RESULTADO MANUAL")
@@ -684,7 +658,6 @@ with tab_upload:
                 st.session_state.jogos_aprovados = carregar_jogos_por_lote_db(tag_limpa)
                 st.success(f"✅ Lote '{tag_limpa}' carregado com {len(st.session_state.jogos_aprovados):,} cartelas!")
         
-        # Upload de arquivo de apostas ou resultado
         arquivo_aposta_upload = st.file_uploader("Carregar arquivo de apostas ou resultado (.txt)", type=["txt"], key="up_geral_txt")
         if arquivo_aposta_upload is not None:
             try:
@@ -712,7 +685,6 @@ with tab_upload:
         sorteio_str = st.text_input("Dezenas Sorteadas:", value=st.session_state.sorteio_manual, key="input_sorteio_manual_fiel")
         st.session_state.sorteio_manual = sorteio_str
 
-    # Processamento rigoroso das 15 dezenas do sorteio
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", st.session_state.sorteio_manual)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
@@ -800,7 +772,7 @@ with tab_historico:
                     st.success(f"Concurso #{num_concurso} sincronizado e salvo no SQLite com sucesso!")
                     st.rerun()
         except Exception as e:
-            st.error(f"Erro ao conectar com a API da Caixa: {e}")
+            st.error(f"Erro ao conectar com a Caixa: {e}")
 
     st.markdown("---")
     st.markdown("#### 💾 GERENCIAR LOTES SALVOS NO BANCO SQLITE")
