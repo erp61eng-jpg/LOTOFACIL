@@ -700,7 +700,6 @@ with tab_upload:
                     st.session_state.jogos_aprovados = jogos_lidos_arq
                     st.success(f"✅ Arquivo carregado com sucesso! **{len(jogos_lidos_arq):,} cartelas** prontas para conferência.")
                 else:
-                    # Tenta ler como 15 dezenas únicas de sorteio caso tenha apenas 1 linha
                     nums_unico = [int(x) for x in re.findall(r"\b\d+\b", conteudo_up)]
                     if len(nums_unico) >= 15:
                         st.session_state.sorteio_manual = " ".join([f"{n:02d}" for n in sorted(list(set(nums_unico))[:15])])
@@ -778,7 +777,6 @@ with tab_visualizador:
             idx_escolhido = int(re.findall(r"#(\d+)", escolha_vis)[0]) - 1
             cartela_alvo = st.session_state.jogos_aprovados[idx_escolhido]
             
-            # Exibe o cartão em azul conforme pedido
             render_volante_5x5_azul(cartela_alvo, titulo=f"Cartela #{idx_escolhido+1:04d}")
     else:
         st.info("ℹ️ Nenhuma cartela carregada na memória no momento. Carregue um lote ou faça upload na aba de conferência.")
