@@ -180,7 +180,7 @@ def deletar_lote_db(lote_tag):
 
 
 # ==============================================================================
-# CONSTANTES & CONFIGURAÇÕES
+# CONSTANTES & CONFIGURAÇÕES FIÉIS À AMOSTRA BASE
 # ==============================================================================
 ARQUIVO_NOTAS_LOCAL = "meu_bloco_de_notas.txt"
 
@@ -293,7 +293,8 @@ def extrair_analise_elite(dados_calor):
         "dc": melhores_dc, "dd": melhores_dd, "colunas": melhores_col, "pool_elite": pool_elite
     }
 
-def extrair_filtros_de_jogo(dezenas, margem_soma=25):
+def extrair_filtros_de_jogo(dezenas, margem_soma=40):
+    """Sintetiza rigorosamente a amostra do jogo base exato inserido pelo usuário e aplica folgas calibradas (±2)"""
     dezenas = sorted(list(set([int(x) for x in dezenas])))
     if len(dezenas) < 15: dezenas = JOGO_BASE_PADRAO
 
@@ -304,31 +305,31 @@ def extrair_filtros_de_jogo(dezenas, margem_soma=25):
         dc_cnt[DC_LOOKUP[n]] += 1
         dd_cnt[DD_LOOKUP[n]] += 1
 
-    def faixa_estrita_mais_menos_1(val):
-        return [max(0, val - 1), min(5, val + 1)]
+    def faixa_amostra_fiel(val):
+        # Permite flexibilidade de ±2 pontos em cima exatamente da amostra do seu jogo base
+        return [max(0, val - 2), min(5, val + 2)]
 
     pares_jogo = sum(1 for n in dezenas if PAR_LOOKUP[n])
     primos_total = sum(1 for n in dezenas if PRIMO_LOOKUP[n])
     moldura_total = sum(1 for n in dezenas if MOLDURA_LOOKUP[n])
-    cruz_total = sum(1 for n in dezenas if CRUZ_LOOKUP[n])
     soma_total = sum(dezenas[:15])
 
     return {
-        "linhas": [faixa_estrita_mais_menos_1(q) for q in l_cnt],
-        "colunas": [faixa_estrita_mais_menos_1(q) for q in c_cnt],
-        "diag_cresc": [faixa_estrita_mais_menos_1(q) for q in dc_cnt],
-        "diag_decresc": [faixa_estrita_mais_menos_1(q) for q in dd_cnt],
-        "primos": list(range(max(1, primos_total - 1), min(10, primos_total + 2))),
-        "pares": list(range(max(4, pares_jogo - 1), min(12, pares_jogo + 2))),
-        "moldura": list(range(max(5, moldura_total - 1), min(16, moldura_total + 2))),
-        "cruz": list(range(max(1, cruz_total - 1), min(10, cruz_total + 2))),
-        "soma": [max(140, soma_total - margem_soma), min(250, soma_total + margem_soma)]
+        "linhas": [faixa_amostra_fiel(q) for q in l_cnt],
+        "colunas": [faixa_amostra_fiel(q) for q in c_cnt],
+        "diag_cresc": [faixa_amostra_fiel(q) for q in dc_cnt],
+        "diag_decresc": [faixa_amostra_fiel(q) for q in dd_cnt],
+        "primos": list(range(max(1, primos_total - 2), min(10, primos_total + 3))),
+        "pares": list(range(max(2, pares_jogo - 2), min(14, pares_jogo + 3))),
+        "moldura": list(range(max(3, moldura_total - 2), min(16, moldura_total + 3))),
+        "soma": [max(120, soma_total - margem_soma), min(270, soma_total + margem_soma)],
+        "amostra_original": dezenas
     }
 
 def validar_aposta_final_15(jogo, cfg):
     jogo_int = [int(x) for x in jogo]
     soma_j = sum(jogo_int)
-    faixa_soma = cfg.get("soma", [140, 250])
+    faixa_soma = cfg.get("soma", [120, 270])
     if not (faixa_soma[0] <= soma_j <= faixa_soma[1]): return False
     
     if sum(1 for n in jogo_int if PAR_LOOKUP[n]) not in cfg.get("pares", []): return False
@@ -389,19 +390,15 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         relatorio.append({"num_aposta": idx + 1, "jogo": jogo_int, "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
-def render_volante_base_compacto(dezenas_base, titulo="BASE ATUAL (5x5)"):
-    """Renderiza a matriz 5x5 compacta em formato de quadrado pequeno para a Engenharia Reversa"""
+def render_volante_base_compacto(dezenas_base):
     base_set = set([int(x) for x in dezenas_base])
-    
     for r in range(5):
         cols = st.columns(5)
         for c in range(5):
             n = r * 5 + c + 1
             presente = n in base_set
-            
             bg = "#facc15" if presente else "#f4f4f5"
             color = "#000000" if presente else "#a1a1aa"
-            
             with cols[c]:
                 st.markdown(f"""
                 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:34px;background:{bg};color:{color};font-weight:900;font-size:13px;border:2px solid #000000;border-radius:5px;font-family:monospace;text-align:center;margin-bottom:3px;">
@@ -410,20 +407,15 @@ def render_volante_base_compacto(dezenas_base, titulo="BASE ATUAL (5x5)"):
                 """, unsafe_allow_html=True)
 
 def render_volante_5x5_azul(dezenas_jogo, titulo="CARTÃO 5x5"):
-    """Renderiza a matriz 5x5 em AZUL usando colunas nativas"""
     jogo_set = set([int(x) for x in dezenas_jogo])
-    
     st.markdown(f"<div style='font-weight:900; font-size:15px; margin-bottom:6px; text-transform:uppercase; text-align:center;'>🔵 {titulo}</div>", unsafe_allow_html=True)
-    
     for r in range(5):
         cols = st.columns(5)
         for c in range(5):
             n = r * 5 + c + 1
             presente_jogo = n in jogo_set
-            
             bg = "#0284c7" if presente_jogo else "#e0f2fe"
             color = "#ffffff" if presente_jogo else "#0369a1"
-            
             with cols[c]:
                 st.markdown(f"""
                 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:38px;background:{bg};color:{color};font-weight:900;font-size:14px;border:2px solid #0369a1;border-radius:6px;font-family:monospace;text-align:center;margin-bottom:4px;">
@@ -434,21 +426,18 @@ def render_volante_5x5_azul(dezenas_jogo, titulo="CARTÃO 5x5"):
 def render_volante_conferencia(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃO"):
     jogo_set = set([int(x) for x in dezenas_jogo])
     sorteio_set = set([int(x) for x in dezenas_sorteadas])
-    
     for r in range(5):
         cols = st.columns(5)
         for c in range(5):
             n = r * 5 + c + 1
             acertou = (n in jogo_set) and (n in sorteio_set)
             presente_jogo = n in jogo_set
-            
             if acertou:
                 bg, color, txt = "#facc15", "#000000", f"{n:02d}<br><span style='font-size:10px;'>★</span>"
             elif presente_jogo:
                 bg, color, txt = "#e4e4e7", "#000000", f"{n:02d}<br><span style='font-size:10px;'>&nbsp;</span>"
             else:
                 bg, color, txt = "#ffffff", "#71717a", f"{n:02d}<br><span style='font-size:10px;'>&nbsp;</span>"
-                
             with cols[c]:
                 st.markdown(f"""
                 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:42px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:4px;">
@@ -491,7 +480,7 @@ if "pool_trabalho" not in st.session_state or not isinstance(st.session_state.po
 # INTERFACE PRINCIPAL (ABAS)
 # ==============================================================================
 st.title("🍀 LOTOFÁCIL 25 - PAINEL BLINDADO")
-st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO RIGOROSA ±1 PONTO")
+st.caption("MATRIZ 5x5 • ALTO CONTRASTE PRETO E BRANCO • RESTRIÇÃO COM FOLGAS INTELIGENTES (±2 PONTOS)")
 
 tab_cartela, tab_config, tab_upload, tab_visualizador, tab_historico, tab_notas = st.tabs([
     "🎟️ Cartela & Seleção Elite",
@@ -547,20 +536,20 @@ with tab_cartela:
                     st.rerun()
 
 # ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (COM QUADRADO 5x5)
+# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (COM AMOSTRA FIEL)
 # ------------------------------------------------------------------------------
 with tab_config:
-    st.markdown("### 🎛️ ENGENHARIA REVERSA & RESTRIÇÕES DETALHADAS (±1 PONTO)")
+    st.markdown("### 🎛️ ENGENHARIA REVERSA & SÍNTESE DA AMOSTRA BASE")
     
     col_rev_txt, col_rev_volante = st.columns([1.5, 1])
     
     with col_rev_txt:
         with st.container(border=True):
-            st.caption("Insira suas 15 dezenas de base. O sistema extrairá a estrutura exata e aplicará a margem de ±1 ponto em cima de cada linha, coluna e diagonal.")
+            st.caption("Insira suas 15 dezenas de base. O sistema sintetiza a amostra original com folgas inteligentes (±2 pontos) para calibrar perfeitamente a geração.")
             txt_base = st.text_area("Suas 15 Dezenas:", value=st.session_state.input_dezenas_texto, height=85)
             st.session_state.input_dezenas_texto = txt_base
 
-            if st.button("⚡ EXTRAIR E CALIBRAR FILTROS (±1 PONTO)", type="primary", use_container_width=True):
+            if st.button("⚡ EXTRAIR E CALIBRAR FILTROS (AMOSTRA FIEL)", type="primary", use_container_width=True):
                 nums = [int(x) for x in re.findall(r"\b\d+\b", txt_base)]
                 nums_limpos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
                 if len(nums_limpos) < 15:
@@ -569,12 +558,12 @@ with tab_config:
                     cfg_gerada = extrair_filtros_de_jogo(nums_limpos[:15])
                     st.session_state["cfg_ativa"] = cfg_gerada
                     st.session_state.pool_trabalho = set(nums_limpos[:15])
-                    st.success("✅ Filtros extraídos com margem restrita de ±1 ponto!")
+                    st.success("✅ Filtros extraídos e calibrados fielmente com base na sua amostra!")
                     st.rerun()
 
     with col_rev_volante:
         with st.container(border=True):
-            st.markdown("<div style='text-align:center; font-weight:900; font-size:14px; margin-bottom:5px;'>📌 BASE ATUAL</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; font-weight:900; font-size:14px; margin-bottom:5px;'>📌 AMOSTRA DO JOGO BASE</div>", unsafe_allow_html=True)
             nums_base_atual = [int(x) for x in re.findall(r"\b\d+\b", st.session_state.input_dezenas_texto)]
             render_volante_base_compacto(nums_base_atual)
 
