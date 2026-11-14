@@ -389,8 +389,28 @@ def conferir_apostas_contra_sorteio(lista_jogos, dezenas_sorteadas):
         relatorio.append({"num_aposta": idx + 1, "jogo": jogo_int, "qtd_acertos": qtd, "acertos": acertos})
     return relatorio, placar
 
+def render_volante_base_compacto(dezenas_base, titulo="BASE ATUAL (5x5)"):
+    """Renderiza a matriz 5x5 compacta em formato de quadrado pequeno para a Engenharia Reversa"""
+    base_set = set([int(x) for x in dezenas_base])
+    
+    for r in range(5):
+        cols = st.columns(5)
+        for c in range(5):
+            n = r * 5 + c + 1
+            presente = n in base_set
+            
+            bg = "#facc15" if presente else "#f4f4f5"
+            color = "#000000" if presente else "#a1a1aa"
+            
+            with cols[c]:
+                st.markdown(f"""
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:34px;background:{bg};color:{color};font-weight:900;font-size:13px;border:2px solid #000000;border-radius:5px;font-family:monospace;text-align:center;margin-bottom:3px;">
+                    {n:02d}
+                </div>
+                """, unsafe_allow_html=True)
+
 def render_volante_5x5_azul(dezenas_jogo, titulo="CARTÃO 5x5"):
-    """Renderiza a matriz 5x5 em AZUL usando colunas nativas (Estável, sem cortes HTML)"""
+    """Renderiza a matriz 5x5 em AZUL usando colunas nativas"""
     jogo_set = set([int(x) for x in dezenas_jogo])
     
     st.markdown(f"<div style='font-weight:900; font-size:15px; margin-bottom:6px; text-transform:uppercase; text-align:center;'>🔵 {titulo}</div>", unsafe_allow_html=True)
@@ -527,26 +547,36 @@ with tab_cartela:
                     st.rerun()
 
 # ------------------------------------------------------------------------------
-# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA
+# ABA 2: CONFIGURAÇÃO DE FILTROS & ENGENHARIA REVERSA (COM QUADRADO 5x5)
 # ------------------------------------------------------------------------------
 with tab_config:
     st.markdown("### 🎛️ ENGENHARIA REVERSA & RESTRIÇÕES DETALHADAS (±1 PONTO)")
-    with st.container(border=True):
-        st.caption("Insira suas 15 dezenas de base. O sistema extrairá a estrutura exata e aplicará a margem de ±1 ponto em cima de cada linha, coluna e diagonal.")
-        txt_base = st.text_area("Suas 15 Dezenas:", value=st.session_state.input_dezenas_texto, height=85)
-        st.session_state.input_dezenas_texto = txt_base
+    
+    col_rev_txt, col_rev_volante = st.columns([1.5, 1])
+    
+    with col_rev_txt:
+        with st.container(border=True):
+            st.caption("Insira suas 15 dezenas de base. O sistema extrairá a estrutura exata e aplicará a margem de ±1 ponto em cima de cada linha, coluna e diagonal.")
+            txt_base = st.text_area("Suas 15 Dezenas:", value=st.session_state.input_dezenas_texto, height=85)
+            st.session_state.input_dezenas_texto = txt_base
 
-        if st.button("⚡ EXTRAIR E CALIBRAR FILTROS (±1 PONTO)", type="primary", use_container_width=True):
-            nums = [int(x) for x in re.findall(r"\b\d+\b", txt_base)]
-            nums_limpos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
-            if len(nums_limpos) < 15:
-                st.error("⚠️ Insira pelo menos 15 dezenas válidas.")
-            else:
-                cfg_gerada = extrair_filtros_de_jogo(nums_limpos[:15])
-                st.session_state["cfg_ativa"] = cfg_gerada
-                st.session_state.pool_trabalho = set(nums_limpos[:15])
-                st.success("✅ Filtros extraídos com margem restrita de ±1 ponto!")
-                st.rerun()
+            if st.button("⚡ EXTRAIR E CALIBRAR FILTROS (±1 PONTO)", type="primary", use_container_width=True):
+                nums = [int(x) for x in re.findall(r"\b\d+\b", txt_base)]
+                nums_limpos = sorted(list(set([n for n in nums if 1 <= n <= 25])))
+                if len(nums_limpos) < 15:
+                    st.error("⚠️ Insira pelo menos 15 dezenas válidas.")
+                else:
+                    cfg_gerada = extrair_filtros_de_jogo(nums_limpos[:15])
+                    st.session_state["cfg_ativa"] = cfg_gerada
+                    st.session_state.pool_trabalho = set(nums_limpos[:15])
+                    st.success("✅ Filtros extraídos com margem restrita de ±1 ponto!")
+                    st.rerun()
+
+    with col_rev_volante:
+        with st.container(border=True):
+            st.markdown("<div style='text-align:center; font-weight:900; font-size:14px; margin-bottom:5px;'>📌 BASE ATUAL</div>", unsafe_allow_html=True)
+            nums_base_atual = [int(x) for x in re.findall(r"\b\d+\b", st.session_state.input_dezenas_texto)]
+            render_volante_base_compacto(nums_base_atual)
 
     cfg_ativo = st.session_state.get("cfg_ativa", extrair_filtros_de_jogo(JOGO_BASE_PADRAO))
 
@@ -772,7 +802,7 @@ with tab_historico:
                     st.success(f"Concurso #{num_concurso} sincronizado e salvo no SQLite com sucesso!")
                     st.rerun()
         except Exception as e:
-            st.error(f"Erro ao conectar com a Caixa: {e}")
+            st.error(f"Erro ao conectar com a API da Caixa: {e}")
 
     st.markdown("---")
     st.markdown("#### 💾 GERENCIAR LOTES SALVOS NO BANCO SQLITE")
