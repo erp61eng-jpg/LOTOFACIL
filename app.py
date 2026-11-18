@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE E ALINHAMENTO PERFEITO)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE, PLACAR AMPLIADO E VOLANTES 5X5 PERFEITOS)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -62,13 +62,14 @@ st.markdown('''
         border: 4px solid #000000 !important;
     }
     
+    /* PLACAR GIGANTE DE CONFERÊNCIA */
     [data-testid="stMetricValue"] {
-        font-size: 2.8rem !important;
+        font-size: 3.8rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 1.3rem !important;
+        font-size: 1.6rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
@@ -401,7 +402,7 @@ def render_volante_5x5_azul(dezenas_jogo, titulo="CARTÃO 5x5"):
             color = "#ffffff" if presente_jogo else "#0369a1"
             with cols[c]:
                 st.markdown(f"""
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:38px;background:{bg};color:{color};font-weight:900;font-size:14px;border:2px solid #0369a1;border-radius:6px;font-family:monospace;text-align:center;margin-bottom:4px;">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:44px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #0369a1;border-radius:6px;font-family:monospace;text-align:center;margin-bottom:4px;box-sizing:border-box;">
                     {n:02d}
                 </div>
                 """, unsafe_allow_html=True)
@@ -409,6 +410,7 @@ def render_volante_5x5_azul(dezenas_jogo, titulo="CARTÃO 5x5"):
 def render_volante_conferencia(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃO"):
     jogo_set = set([int(x) for x in dezenas_jogo])
     sorteio_set = set([int(x) for x in dezenas_sorteadas])
+    st.markdown(f"<div style='font-weight:900; font-size:16px; margin-bottom:8px; text-transform:uppercase; text-align:center;'>🎯 {titulo}</div>", unsafe_allow_html=True)
     for r in range(5):
         cols = st.columns(5)
         for c in range(5):
@@ -416,14 +418,14 @@ def render_volante_conferencia(dezenas_jogo, dezenas_sorteadas, titulo="CARTÃO"
             acertou = (n in jogo_set) and (n in sorteio_set)
             presente_jogo = n in jogo_set
             if acertou:
-                bg, color, txt = "#facc15", "#000000", f"{n:02d}<br><span style='font-size:10px;'>★</span>"
+                bg, color, txt = "#facc15", "#000000", f"{n:02d} ★"
             elif presente_jogo:
-                bg, color, txt = "#e4e4e7", "#000000", f"{n:02d}<br><span style='font-size:10px;'>&nbsp;</span>"
+                bg, color, txt = "#e4e4e7", "#000000", f"{n:02d}"
             else:
-                bg, color, txt = "#ffffff", "#71717a", f"{n:02d}<br><span style='font-size:10px;'>&nbsp;</span>"
+                bg, color, txt = "#ffffff", "#71717a", f"{n:02d}"
             with cols[c]:
                 st.markdown(f"""
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:42px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;text-align:center;line-height:1.1;margin-bottom:4px;">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:44px;background:{bg};color:{color};font-weight:900;font-size:15px;border:2px solid #000000;border-radius:6px;font-family:monospace;text-align:center;box-sizing:border-box;margin-bottom:4px;">
                     {txt}
                 </div>
                 """, unsafe_allow_html=True)
@@ -700,11 +702,11 @@ with tab_upload:
             relatorio, placar = conferir_apostas_contra_sorteio(st.session_state.jogos_aprovados, sorteio_nums)
             
             c15, c14, c13, c12, c11 = st.columns(5)
-            c15.metric("15 P", f"{len(placar[15])}")
-            c14.metric("14 P", f"{len(placar[14])}")
-            c13.metric("13 P", f"{len(placar[13])}")
-            c12.metric("12 P", f"{len(placar[12])}")
-            c11.metric("11 P", f"{len(placar[11])}")
+            c15.metric("15 PONTOS", f"{len(placar[15])}")
+            c14.metric("14 PONTOS", f"{len(placar[14])}")
+            c13.metric("13 PONTOS", f"{len(placar[13])}")
+            c12.metric("12 PONTOS", f"{len(placar[12])}")
+            c11.metric("11 PONTOS", f"{len(placar[11])}")
 
             st.markdown("---")
             st.markdown("#### 🔍 INSPECIONAR NO CARTÃO 5x5")
