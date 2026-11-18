@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE, PLACAR SUPER AMPLIADO E VOLANTES 5X5)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE, PLACAR E SORTEIO SUPER AMPLIADOS)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -62,18 +62,31 @@ st.markdown('''
         border: 4px solid #000000 !important;
     }
     
-    /* PLACAR SUPER GIGANTE DE CONFERÊNCIA */
+    /* PLACAR MÁXIMO DE CONFERÊNCIA */
     [data-testid="stMetricValue"] {
-        font-size: 5.0rem !important;
+        font-size: 6.2rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 1.8rem !important;
+        font-size: 2.1rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     
+    .sorteio-reconhecido-box {
+        font-size: 2.2rem !important;
+        font-weight: 900 !important;
+        color: #000000 !important;
+        background-color: #fef08a !important;
+        padding: 18px;
+        border: 4px solid #000000;
+        border-radius: 10px;
+        text-align: center;
+        margin: 15px 0;
+        font-family: monospace !important;
+    }
+
     .progresso-gigante {
         font-size: 1.6rem !important;
         font-weight: 900 !important;
@@ -692,7 +705,7 @@ with tab_upload:
     raw_nums = [int(x) for x in re.findall(r"\b\d+\b", st.session_state.sorteio_manual)]
     sorteio_nums = sorted(list(set([n for n in raw_nums if 1 <= n <= 25])))
 
-    st.info(f"🔍 **Sorteio Reconhecido ({len(sorteio_nums)}/15):** `{' '.join([f'{n:02d}' for n in sorteio_nums])}`")
+    st.markdown(f"<div class='sorteio-reconhecido-box'>🔍 SORTEIO RECONHECIDO ({len(sorteio_nums)}/15): {' '.join([f'{n:02d}' for n in sorteio_nums])}</div>", unsafe_allow_html=True)
 
     if len(sorteio_nums) == 15:
         if st.session_state.jogos_aprovados:
