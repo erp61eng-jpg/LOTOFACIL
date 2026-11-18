@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE, PLACAR AMPLIADO E VOLANTES 5X5 PERFEITOS)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE, PLACAR SUPER AMPLIADO E VOLANTES 5X5)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -62,14 +62,14 @@ st.markdown('''
         border: 4px solid #000000 !important;
     }
     
-    /* PLACAR GIGANTE DE CONFERÊNCIA */
+    /* PLACAR SUPER GIGANTE DE CONFERÊNCIA */
     [data-testid="stMetricValue"] {
-        font-size: 3.8rem !important;
+        font-size: 5.0rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 1.6rem !important;
+        font-size: 1.8rem !important;
         font-weight: 900 !important;
         color: #000000 !important;
     }
