@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE, PLACAR E SORTEIO SUPER AMPLIADOS)
+# ESTILIZAÇÃO CSS GLOBAL (ALTO CONTRASTE E PADRÃO VISUAL UNIFICADO)
 st.markdown('''
 <style>
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {
@@ -62,18 +62,6 @@ st.markdown('''
         border: 4px solid #000000 !important;
     }
     
-    /* PLACAR MÁXIMO DE CONFERÊNCIA */
-    [data-testid="stMetricValue"] {
-        font-size: 6.2rem !important;
-        font-weight: 900 !important;
-        color: #000000 !important;
-    }
-    [data-testid="stMetricLabel"] {
-        font-size: 2.1rem !important;
-        font-weight: 900 !important;
-        color: #000000 !important;
-    }
-    
     .sorteio-reconhecido-box {
         font-size: 2.2rem !important;
         font-weight: 900 !important;
@@ -84,6 +72,28 @@ st.markdown('''
         border-radius: 10px;
         text-align: center;
         margin: 15px 0;
+        font-family: monospace !important;
+    }
+
+    .placar-caixa-box {
+        background-color: #fef08a !important;
+        border: 4px solid #000000 !important;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        margin: 5px 0;
+    }
+    .placar-titulo {
+        font-size: 1.3rem !important;
+        font-weight: 900 !important;
+        color: #000000 !important;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+    .placar-valor {
+        font-size: 3.2rem !important;
+        font-weight: 900 !important;
+        color: #000000 !important;
         font-family: monospace !important;
     }
 
@@ -714,12 +724,43 @@ with tab_upload:
             
             relatorio, placar = conferir_apostas_contra_sorteio(st.session_state.jogos_aprovados, sorteio_nums)
             
-            c15, c14, c13, c12, c11 = st.columns(5)
-            c15.metric("15 PONTOS", f"{len(placar[15])}")
-            c14.metric("14 PONTOS", f"{len(placar[14])}")
-            c13.metric("13 PONTOS", f"{len(placar[13])}")
-            c12.metric("12 PONTOS", f"{len(placar[12])}")
-            c11.metric("11 PONTOS", f"{len(placar[11])}")
+            col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
+            
+            with col_p1:
+                st.markdown(f"""
+                <div class="placar-caixa-box">
+                    <div class="placar-titulo">15 PONTOS</div>
+                    <div class="placar-valor">{len(placar[15])}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_p2:
+                st.markdown(f"""
+                <div class="placar-caixa-box">
+                    <div class="placar-titulo">14 PONTOS</div>
+                    <div class="placar-valor">{len(placar[14])}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_p3:
+                st.markdown(f"""
+                <div class="placar-caixa-box">
+                    <div class="placar-titulo">13 PONTOS</div>
+                    <div class="placar-valor">{len(placar[13])}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_p4:
+                st.markdown(f"""
+                <div class="placar-caixa-box">
+                    <div class="placar-titulo">12 PONTOS</div>
+                    <div class="placar-valor">{len(placar[12])}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_p5:
+                st.markdown(f"""
+                <div class="placar-caixa-box">
+                    <div class="placar-titulo">11 PONTOS</div>
+                    <div class="placar-valor">{len(placar[11])}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             st.markdown("---")
             st.markdown("#### 🔍 INSPECIONAR NO CARTÃO 5x5")
